@@ -1,0 +1,200 @@
+{
+  "common": {
+    "siteName": "RAN For Science",
+    "tagline": "Connecting Knowledge with Opportunity",
+    "readMore": "Read more",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "send": "Send",
+    "viewDetails": "View Details",
+    "requestQuote": "Request a Quote",
+    "applyNow": "Apply Now",
+    "loading": "Loading...",
+    "successTitle": "Submitted Successfully",
+    "errorTitle": "Something Went Wrong",
+    "requiredField": "This field is required",
+    "phone": "0560464352"
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "services": "Services",
+    "jobs": "Jobs",
+    "contact": "Contact"
+  },
+  "footer": {
+    "about": "A professional scientific platform connecting individuals with companies in the scientific, environmental, industrial, and health fields, offering integrated professional services.",
+    "quickLinks": "Quick Links",
+    "followUs": "Follow Us",
+    "contactUs": "Contact Us",
+    "rights": "All rights reserved"
+  },
+  "social": {
+    "linkedin": "https://www.linkedin.com/company/ran-for-science/",
+    "telegram": "https://t.me/Ran_For_Science",
+    "whatsapp": "https://chat.whatsapp.com/GFaGjxjl4CT2wglvTW2C7n",
+    "tiktok": "https://www.tiktok.com/@ran_for_science",
+    "instagram": "https://www.instagram.com/ran_for_science",
+    "whatsappFloating": "Chat with us on WhatsApp"
+  },
+  "home": {
+    "hero": {
+      "title": "Connecting Knowledge with Opportunity",
+      "subtitle": "A comprehensive professional scientific platform connecting individuals with companies in the scientific, environmental, industrial, and health fields, offering integrated professional services for individuals and companies.",
+      "ctaJobs": "Browse Jobs",
+      "ctaServices": "Explore Our Services",
+      "ctaContact": "Contact Us"
+    },
+    "highlights": {
+      "title": "Our Services",
+      "freeTitle": "Free Services",
+      "freeDescription": "Job ad posting, CV intake & screening, and general scientific consultations — supporting individuals and job seekers.",
+      "freeCta": "Learn more",
+      "paidTitle": "Paid Services",
+      "paidDescription": "Environmental services, factory & company services, legal services, and digital services — empowering companies to grow their business.",
+      "paidCta": "Learn more"
+    },
+    "featuredJobs": {
+      "title": "Latest Jobs",
+      "viewAll": "View All Jobs",
+      "empty": "No jobs published at the moment"
+    },
+    "cta": {
+      "title": "Have a question or need help?",
+      "subtitle": "Our team is ready to answer your questions and provide the support you need.",
+      "button": "Contact Us"
+    }
+  },
+  "about": {
+    "title": "About Us",
+    "intro": "RAN For Science is a specialized professional scientific platform dedicated to supporting individuals and companies through integrated solutions in recruitment, consulting, and regulatory services.",
+    "paragraph2": "The platform seeks to build effective bridges between qualified talent and employers in the scientific, environmental, industrial, and health sectors, contributing to higher-quality hiring and a more efficient labor market.",
+    "paragraph3": "The platform also provides professional support services for companies covering regulatory, commercial, and environmental aspects, empowering them to grow their business and comply with modern professional standards.",
+    "mission": "At RAN For Science, we believe that connecting knowledge with opportunity is the foundation for building a stronger, more sustainable professional future."
+  },
+  "services": {
+    "title": "Services",
+    "subtitle": "We offer a mix of free and paid services to support individuals and companies in the scientific, environmental, industrial, and health fields.",
+    "freeTitle": "Free Services",
+    "freeSubtitle": "Supporting individuals and job seekers through essential free services that help them access suitable opportunities and improve their chances of employment.",
+    "free": {
+      "jobPosting": {
+        "title": "Job Ad Posting",
+        "description": "Publishing job ads and attracting suitable candidates for them."
+      },
+      "cvScreening": {
+        "title": "CV Intake & Screening",
+        "description": "Receiving and screening CVs according to job requirements, and shortlisting candidates for interviews."
+      },
+      "consultation": {
+        "title": "General Scientific Consultations",
+        "description": "Providing general scientific consultations to support job seekers and those interested in scientific fields."
+      }
+    },
+    "paidTitle": "Paid Services",
+    "paidSubtitle": "Integrated professional services for companies and individuals, with the option to request a custom quote for each service.",
+    "trust": {
+      "servicesCount": "{count}+ specialized professional services",
+      "coverageAreas": "{count} integrated coverage areas",
+      "freeConsultation": "Free initial consultation, no commitment required"
+    },
+    "categories": {
+      "environmental": {
+        "title": "Environmental Services",
+        "items": {
+          "envPermits": "Environmental permit issuance and renewal",
+          "envSurveyAssessment": "Environmental survey and assessment",
+          "envReports": "Preparing and updating environmental reports and records",
+          "envRehabilitation": "Environmental rehabilitation and corrective action plans",
+          "envTraining": "Environmental awareness and training",
+          "envWasteTransport": "Waste transport contracts (hazardous and non-hazardous)"
+        }
+      },
+      "company": {
+        "title": "Factory & Company Services",
+        "items": {
+          "companyIsoCert": "ISO Certifications (all types)",
+          "companyMarketing": "Marketing",
+          "companySocialMedia": "Social Media Management"
+        }
+      },
+      "legal": {
+        "title": "Legal Services",
+        "items": {
+          "legalCases": "Legal cases",
+          "legalContracts": "Contracts",
+          "legalConsultation": "Legal consultations"
+        }
+      },
+      "digital": {
+        "title": "Digital Services",
+        "items": {
+          "digitalCompanyProfile": "Professional company profile creation",
+          "digitalBranding": "Branding and visual identity design",
+          "digitalWebsite": "Website creation",
+          "digitalPresentation": "Presentation design",
+          "digitalFormatting": "File and report formatting"
+        }
+      }
+    },
+    "quoteForm": {
+      "title": "Request a Quote",
+      "subtitle": "Fill out the form and our team will get back to you as soon as possible.",
+      "category": "Requested Service",
+      "companyName": "Company Name (optional)",
+      "contactName": "Full Name",
+      "email": "Email",
+      "phone": "Phone Number",
+      "message": "Request Details",
+      "success": "Your request has been received, our team will contact you soon."
+    }
+  },
+  "jobs": {
+    "title": "Jobs",
+    "subtitle": "Browse the latest job opportunities in the scientific, environmental, industrial, and health fields.",
+    "noResults": "No jobs match your search at the moment.",
+    "filters": {
+      "field": "Field",
+      "jobType": "Job Type",
+      "allFields": "All Fields",
+      "allTypes": "All Types"
+    },
+    "jobType": {
+      "FULL_TIME": "Full-time",
+      "PART_TIME": "Part-time",
+      "CONTRACT": "Contract",
+      "INTERNSHIP": "Internship",
+      "REMOTE": "Remote"
+    },
+    "detail": {
+      "requirements": "Requirements",
+      "description": "Job Description",
+      "applyTitle": "Apply for this Job"
+    },
+    "applyForm": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "phone": "Phone Number",
+      "resume": "Resume (PDF or Word, up to 5MB)",
+      "coverNote": "Cover Note (optional)",
+      "success": "Your application has been submitted successfully. We'll contact you if you're a good fit for the role."
+    }
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "We'd love to hear from you. Fill out the form below and we'll get back to you as soon as possible.",
+    "form": {
+      "name": "Full Name",
+      "email": "Email",
+      "phone": "Phone Number (optional)",
+      "subject": "Subject (optional)",
+      "message": "Message",
+      "success": "Your message has been sent successfully. Thank you for reaching out."
+    },
+    "info": {
+      "title": "Contact Information",
+      "phone": "Phone Number",
+      "social": "Follow us on social media"
+    }
+  }
+}

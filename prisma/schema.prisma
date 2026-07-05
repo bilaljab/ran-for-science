@@ -1,0 +1,216 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  REMOTE
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  SHORTLISTED
+  INTERVIEW
+  REJECTED
+  HIRED
+}
+
+enum ServiceCategory {
+  FREE_CONSULTATION
+
+  ENV_PERMITS
+  ENV_SURVEY_ASSESSMENT
+  ENV_REPORTS
+  ENV_REHABILITATION
+  ENV_TRAINING
+  ENV_WASTE_TRANSPORT
+
+  COMPANY_ISO_CERT
+  COMPANY_MARKETING
+  COMPANY_SOCIAL_MEDIA
+
+  LEGAL_CASES
+  LEGAL_CONTRACTS
+  LEGAL_CONSULTATION
+
+  DIGITAL_COMPANY_PROFILE
+  DIGITAL_BRANDING
+  DIGITAL_WEBSITE
+  DIGITAL_PRESENTATION
+  DIGITAL_FORMATTING
+}
+
+enum QuoteStatus {
+  NEW
+  IN_REVIEW
+  CONTACTED
+  CLOSED
+}
+
+enum MessageStatus {
+  NEW
+  READ
+  RESPONDED
+}
+
+model AdminUser {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String
+  name              String
+  emailVerified     DateTime?
+  passwordChangedAt DateTime @default(now())
+  twoFactorSecret   String?
+  twoFactorEnabled  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  auditLogs               AdminAuditLog[]
+}
+
+// Durable "who did what, to which record, when" trail for admin mutations.
+// Deliberately not deleted alongside the AdminUser (no onDelete: Cascade) —
+// an audit trail should survive the account that produced it.
+model AdminAuditLog {
+  id          String    @id @default(cuid())
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id])
+  adminUserId String
+  action      String
+  entityType  String
+  entityId    String?
+  ip          String
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId])
+  @@index([entityType, entityId])
+}
+
+// Persists ONLY devices that already crossed a real abuse threshold (a login
+// lockout or an IP-reputation block — see lib/fingerprint.ts) — never a
+// general visitor-tracking table. `blocked`/`expiresAt` together implement a
+// time-limited block (default 30 days from the most recent strike, renewed
+// on every further strike) rather than a permanent one, since a single
+// fingerprint can collide across different devices of the same
+// make/model/browser build, or belong to a legitimate user having one bad day.
+model BlockedFingerprint {
+  id          String   @id @default(cuid())
+  fingerprint String   @unique
+  reason      String
+  strikes     Int      @default(1)
+  blocked     Boolean  @default(false)
+  expiresAt   DateTime
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  adminUserId String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId])
+}
+
+model EmailVerificationToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  adminUserId String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId])
+}
+
+model JobPosting {
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  titleAr         String
+  titleEn         String
+  descriptionAr   String
+  descriptionEn   String
+  requirementsAr  String?
+  requirementsEn  String?
+  field           String?
+  location        String?
+  jobType         JobType          @default(FULL_TIME)
+  status          JobStatus        @default(DRAFT)
+  publishedAt     DateTime?
+  closesAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  applications    JobApplication[]
+
+  @@index([status, publishedAt])
+}
+
+model JobApplication {
+  id             String             @id @default(cuid())
+  job            JobPosting         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId          String
+  fullName       String
+  email          String
+  phone          String
+  resumeUrl      String
+  resumeFileName String
+  coverNote      String?
+  status         ApplicationStatus  @default(PENDING)
+  adminNotes     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([jobId, status])
+}
+
+model ServiceQuoteRequest {
+  id          String          @id @default(cuid())
+  category    ServiceCategory
+  companyName String?
+  contactName String
+  email       String
+  phone       String
+  message     String
+  status      QuoteStatus     @default(NEW)
+  adminNotes  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([category, status])
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  status    MessageStatus @default(NEW)
+  createdAt DateTime      @default(now())
+
+  @@index([status])
+}
