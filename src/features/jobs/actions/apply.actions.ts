@@ -1,8 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { saveResumeFile, InvalidFileContentError } from "@/lib/storage";
-import { jobApplicationSchema, resumeFileSchema } from "@/features/jobs/validations/application.schema";
+import { readResumeFile, detectResumeContentType, deleteResumeFile } from "@/lib/storage";
+import { jobApplicationSchema, resumeRefSchema } from "@/features/jobs/validations/application.schema";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
 import { logAbuseEvent } from "@/lib/abuse-log";
@@ -12,6 +12,7 @@ import type { ActionState } from "@/lib/actions/types";
 
 const SUBMIT_LIMIT = 5;
 const SUBMIT_WINDOW_MS = 10 * 60 * 1000;
+const INVALID_RESUME_MESSAGE = "Only real PDF or Word documents are accepted.";
 
 export async function submitJobApplication(
   _prevState: ActionState,
@@ -59,9 +60,12 @@ export async function submitJobApplication(
     return { success: false, errors: parsed.error.flatten().fieldErrors };
   }
 
-  const resumeResult = resumeFileSchema.safeParse(formData.get("resume"));
-  if (!resumeResult.success) {
-    return { success: false, errors: { resume: [resumeResult.error.issues[0]?.message ?? "Invalid file"] } };
+  const resumeRefResult = resumeRefSchema.safeParse({
+    key: formData.get("resumeKey"),
+    fileName: formData.get("resumeFileName"),
+  });
+  if (!resumeRefResult.success) {
+    return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 
   const job = await prisma.jobPosting.findUnique({ where: { id: parsed.data.jobId } });
@@ -69,15 +73,25 @@ export async function submitJobApplication(
     return { success: false, message: "Job not found" };
   }
 
-  let key: string;
-  let fileName: string;
+  const { key, fileName } = resumeRefResult.data;
+
+  // The browser already uploaded these bytes directly to R2 (see
+  // presign-resume.actions.ts) to avoid Vercel's ~4.5MB inbound request-body
+  // cap. Read them back here — an outbound call to R2, not subject to that
+  // inbound cap — and verify the real content before trusting it, exactly as
+  // the old saveResumeFile did before creating a DB row.
+  let buffer: Buffer;
   try {
-    ({ key, fileName } = await saveResumeFile(resumeResult.data));
+    buffer = await readResumeFile(key);
   } catch (error) {
-    if (error instanceof InvalidFileContentError) {
-      return { success: false, errors: { resume: ["Only real PDF or Word documents are accepted."] } };
-    }
-    throw error;
+    console.error("[apply] failed to read back uploaded resume", error);
+    return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
+  }
+
+  const detectedMime = await detectResumeContentType(buffer);
+  if (!detectedMime) {
+    await deleteResumeFile(key).catch((error) => console.error("[apply] failed to delete invalid upload", error));
+    return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 
   await prisma.jobApplication.create({

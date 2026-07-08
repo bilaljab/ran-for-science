@@ -1,24 +1,33 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { readFile, unlink } from "fs/promises";
 import { fileTypeFromBuffer } from "file-type";
 
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), "storage", "uploads", "resumes");
+export const LOCAL_STORAGE_DIR = path.join(process.cwd(), "storage", "uploads", "resumes");
 
 const r2Configured = Boolean(
   process.env.R2_BUCKET && process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
 );
 
-// Detected mime -> stored extension. The extension is chosen from the verified
-// file content, never from the user-supplied original filename, so a renamed
-// payload can't smuggle an unexpected extension onto disk.
+// Detected mime -> stored extension, used to verify already-uploaded bytes
+// (see detectResumeContentType). Never trust the client-declared type alone.
 const ALLOWED_RESUME_TYPES: Record<string, string> = {
   "application/pdf": ".pdf",
   "application/x-cfb": ".doc", // legacy .doc is a generic OLE/CFB container
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
 };
 
-export class InvalidFileContentError extends Error {}
+// Client-declared mime (from `file.type`) -> extension, used only to name the
+// R2 object key at presign time, before any bytes exist server-side to sniff.
+// This is cosmetic, not a security control — detectResumeContentType() after
+// upload is the real gate.
+const EXTENSION_BY_DECLARED_MIME: Record<string, string> = {
+  "application/pdf": ".pdf",
+  "application/msword": ".doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+};
+
+const PRESIGN_EXPIRY_SECONDS = 600; // 10 min — long enough for a slow upload, short enough to bound orphan-object exposure.
 
 /**
  * Called once at server startup (see src/instrumentation.ts). Fails fast in
@@ -57,36 +66,47 @@ async function getS3Client() {
   });
 }
 
-export async function saveResumeFile(file: File): Promise<{ key: string; fileName: string }> {
-  const buffer = Buffer.from(await file.arrayBuffer());
+export function buildResumeKey(declaredMimeType: string): string {
+  const ext = EXTENSION_BY_DECLARED_MIME[declaredMimeType] ?? "";
+  return `${randomUUID()}${ext}`;
+}
 
-  // Verify the actual file content via magic bytes — the client-supplied
-  // `file.type` MIME header is attacker-controlled and not trustworthy on its own.
-  const detected = await fileTypeFromBuffer(buffer);
-  if (!detected || !ALLOWED_RESUME_TYPES[detected.mime]) {
-    throw new InvalidFileContentError("Only real PDF or Word documents are accepted.");
-  }
-  const ext = ALLOWED_RESUME_TYPES[detected.mime];
-
-  const key = `${randomUUID()}${ext}`;
-
+/**
+ * Returns a URL the browser can PUT the resume bytes to directly, bypassing
+ * our own server entirely for the (potentially large) file body — see
+ * apply.actions.ts/presign-resume.actions.ts for why. In dev without R2
+ * configured, falls back to a local route that mimics the same PUT contract
+ * (src/app/api/dev/resume-upload/[key]/route.ts).
+ *
+ * Deliberately does not bind ContentType into the signed command: doing so
+ * would require the browser's PUT to send back byte-for-byte the same
+ * Content-Type header or R2 rejects the signature — content-type isn't a
+ * trust boundary either way (detectResumeContentType is), so there's no
+ * security benefit to that fragility.
+ */
+export async function getResumeUploadUrl(key: string): Promise<string> {
   if (r2Configured) {
     const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
     const client = await getS3Client();
-    await client.send(
-      new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET,
-        Key: key,
-        Body: buffer,
-        ContentType: detected.mime,
-      })
-    );
-  } else {
-    await mkdir(LOCAL_STORAGE_DIR, { recursive: true });
-    await writeFile(path.join(LOCAL_STORAGE_DIR, key), buffer);
+    const command = new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key });
+    return getSignedUrl(client, command, { expiresIn: PRESIGN_EXPIRY_SECONDS });
   }
 
-  return { key, fileName: file.name };
+  return `/api/dev/resume-upload/${encodeURIComponent(key)}`;
+}
+
+/**
+ * Verifies actual file content via magic bytes — the client-supplied
+ * `file.type` MIME header is attacker-controlled and not trustworthy on its
+ * own. Run this against bytes read back from storage after upload (never
+ * against a request body directly), so it works the same whether the file
+ * arrived via direct-to-R2 upload or local disk.
+ */
+export async function detectResumeContentType(buffer: Buffer): Promise<string | null> {
+  const detected = await fileTypeFromBuffer(buffer);
+  if (!detected || !ALLOWED_RESUME_TYPES[detected.mime]) return null;
+  return detected.mime;
 }
 
 export async function readResumeFile(key: string): Promise<Buffer> {
@@ -99,4 +119,19 @@ export async function readResumeFile(key: string): Promise<Buffer> {
   }
 
   return readFile(path.join(LOCAL_STORAGE_DIR, key));
+}
+
+export async function deleteResumeFile(key: string): Promise<void> {
+  if (r2Configured) {
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await getS3Client();
+    await client.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
+    return;
+  }
+
+  try {
+    await unlink(path.join(LOCAL_STORAGE_DIR, key));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }

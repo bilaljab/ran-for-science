@@ -15,6 +15,14 @@ const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "s
 // allow it, or the widget silently fails to render/verify in production.
 const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 
+// Resume uploads PUT directly from the browser to R2 (see src/lib/storage.ts
+// getResumeUploadUrl / src/features/jobs/actions/presign-resume.actions.ts) —
+// bypassing our own server so large files aren't subject to Vercel's inbound
+// serverless-function body-size cap. Wildcarded to cover both virtual-hosted
+// (<bucket>.<account>.r2.cloudflarestorage.com) and path-style addressing
+// without hardcoding the account ID into a build-time config file.
+const R2_ORIGIN = "https://*.r2.cloudflarestorage.com";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -33,7 +41,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self'",
-      `connect-src 'self' ${TURNSTILE_ORIGIN}`,
+      `connect-src 'self' ${TURNSTILE_ORIGIN} ${R2_ORIGIN}`,
       `frame-src ${TURNSTILE_ORIGIN}`,
       "frame-ancestors 'none'",
       // base-uri/form-action don't fall back to default-src like the fetch
@@ -60,7 +68,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "6mb",
+      // Resume bytes now go straight from the browser to R2 via a presigned
+      // URL (see src/lib/storage.ts) — no Server Action legitimately carries
+      // a large file anymore, so this stays small as defense-in-depth.
+      bodySizeLimit: "1mb",
     },
   },
 };

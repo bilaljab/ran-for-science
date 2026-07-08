@@ -177,7 +177,11 @@
       "phone": "Phone Number",
       "resume": "Resume (PDF or Word, up to 5MB)",
       "coverNote": "Cover Note (optional)",
-      "success": "Your application has been submitted successfully. We'll contact you if you're a good fit for the role."
+      "success": "Your application has been submitted successfully. We'll contact you if you're a good fit for the role.",
+      "errors": {
+        "invalidFile": "Please attach a valid PDF or Word file no larger than 5MB.",
+        "uploadFailed": "Couldn't upload the file — check your internet connection and try again."
+      }
     }
   },
   "contact": {
