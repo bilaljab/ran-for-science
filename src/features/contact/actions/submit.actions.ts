@@ -33,11 +33,11 @@ export async function submitContactMessage(
     return { success: true };
   }
 
-  if (await isKnownBadFingerprint(fp)) {
+  if (await isKnownBadFingerprint(fp, "PUBLIC")) {
     return { success: true };
   }
 
-  if (!checkRateLimit(`contact:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "contact", fingerprint: typeof fp === "string" ? fp : undefined })) {
+  if (!checkRateLimit(`contact:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "contact", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined })) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 

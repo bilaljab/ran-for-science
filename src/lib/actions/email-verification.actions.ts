@@ -47,6 +47,7 @@ export async function verifyEmail(_prevState: ActionState, formData: FormData): 
     !checkRateLimit(`verify-confirm:${ip}`, VERIFY_CONFIRM_LIMIT, VERIFY_CONFIRM_WINDOW_MS, {
       ip,
       source: "verify-confirm",
+      scope: "ADMIN",
     })
   ) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };

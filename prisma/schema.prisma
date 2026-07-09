@@ -104,6 +104,18 @@ model AdminAuditLog {
   @@index([entityType, entityId])
 }
 
+// ADMIN blocks (escalated from admin-login lockouts) and PUBLIC blocks
+// (escalated from public-form rate-limit/IP-reputation violations) are kept
+// in separate namespaces via the compound unique key below — the same
+// browser fingerprint is used on both the admin login page and the public
+// forms, and without this separation, an admin mistyping their own password
+// a few times would silently blacklist their own device from the public
+// contact/quote/apply forms too (a real bug this schema previously had).
+enum FingerprintScope {
+  ADMIN
+  PUBLIC
+}
+
 // Persists ONLY devices that already crossed a real abuse threshold (a login
 // lockout or an IP-reputation block — see lib/fingerprint.ts) — never a
 // general visitor-tracking table. `blocked`/`expiresAt` together implement a
@@ -112,14 +124,17 @@ model AdminAuditLog {
 // fingerprint can collide across different devices of the same
 // make/model/browser build, or belong to a legitimate user having one bad day.
 model BlockedFingerprint {
-  id          String   @id @default(cuid())
-  fingerprint String   @unique
+  id          String           @id @default(cuid())
+  fingerprint String
+  scope       FingerprintScope
   reason      String
-  strikes     Int      @default(1)
-  blocked     Boolean  @default(false)
+  strikes     Int              @default(1)
+  blocked     Boolean          @default(false)
   expiresAt   DateTime
-  firstSeenAt DateTime @default(now())
-  lastSeenAt  DateTime @updatedAt
+  firstSeenAt DateTime         @default(now())
+  lastSeenAt  DateTime         @updatedAt
+
+  @@unique([fingerprint, scope])
 }
 
 model PasswordResetToken {

@@ -35,6 +35,7 @@ export async function requestPasswordReset(
     !checkRateLimit(`reset-request:${ip}`, RESET_REQUEST_LIMIT, RESET_REQUEST_WINDOW_MS, {
       ip,
       source: "reset-request",
+      scope: "ADMIN",
     })
   ) {
     // Same generic message on rate-limit as on success — don't leak state to a prober.
@@ -80,6 +81,7 @@ export async function resetPassword(
     !checkRateLimit(`reset-confirm:${ip}`, RESET_CONFIRM_LIMIT, RESET_CONFIRM_WINDOW_MS, {
       ip,
       source: "reset-confirm",
+      scope: "ADMIN",
     })
   ) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };

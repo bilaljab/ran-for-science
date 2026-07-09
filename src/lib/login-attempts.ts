@@ -7,6 +7,13 @@ const attempts = new Map<string, AttemptState>();
 
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 
+// The mildest lockout tier (5 failures / 60s) fires easily from ordinary
+// mistakes (a mistyped password, an MFA typo, or deliberately testing the
+// lockout itself) — escalating a 30-day cross-context fingerprint block from
+// that alone punished legitimate admins too readily. Reserve the fingerprint
+// escalation for the second tier and up.
+const FINGERPRINT_ESCALATION_THRESHOLD = 8;
+
 // Each step's lock duration applies once the failure count reaches it, and
 // stays in effect (re-triggered on every subsequent failure) until the
 // failure count resets after a clean window. This is what makes repeated
@@ -74,8 +81,8 @@ export function recordLoginFailure(key: string, ip: string, label: string, finge
   if (lockMs > 0) {
     state.lockedUntil = now + lockMs;
     logAbuseEvent({ type: "login_lockout", ip, detail: `${label} failures=${state.failures} lockMs=${lockMs}` });
-    if (fingerprint) {
-      void recordSuspiciousFingerprint(fingerprint, `login_lockout ${label}`);
+    if (fingerprint && state.failures >= FINGERPRINT_ESCALATION_THRESHOLD) {
+      void recordSuspiciousFingerprint(fingerprint, "ADMIN", `login_lockout ${label}`);
     }
   }
   attempts.set(key, state);

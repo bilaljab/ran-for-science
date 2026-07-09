@@ -1,5 +1,6 @@
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { recordSuspiciousFingerprint } from "@/lib/fingerprint";
+import type { FingerprintScope } from "@/generated/prisma/enums";
 
 type Strike = { count: number; windowStart: number; blockedUntil: number };
 
@@ -44,7 +45,12 @@ export function isIpBlocked(ip: string): boolean {
   return !!strike && Date.now() < strike.blockedUntil;
 }
 
-export function recordRateLimitViolation(ip: string, source: string, fingerprint?: string): void {
+export function recordRateLimitViolation(
+  ip: string,
+  source: string,
+  scope: FingerprintScope,
+  fingerprint?: string
+): void {
   if (ip === "unknown") return;
   const now = Date.now();
   sweep(now);
@@ -60,7 +66,7 @@ export function recordRateLimitViolation(ip: string, source: string, fingerprint
     strike.blockedUntil = now + BLOCK_DURATION_MS;
     logAbuseEvent({ type: "ip_blocked", ip, detail: `source=${source} strikes=${strike.count}` });
     if (fingerprint) {
-      void recordSuspiciousFingerprint(fingerprint, `ip_blocked source=${source}`);
+      void recordSuspiciousFingerprint(fingerprint, scope, `ip_blocked source=${source}`);
     }
   }
 }

@@ -51,7 +51,7 @@ export async function presignResumeUpload(rawInput: unknown): Promise<PresignRes
   const isHoneypotTripped = Boolean(website);
   const isWebdriver = fpBot === "1";
   const isTimingTrapTripped = isTooFast(formRenderedAt ?? null);
-  const isBadFingerprint = await isKnownBadFingerprint(fp);
+  const isBadFingerprint = await isKnownBadFingerprint(fp, "PUBLIC");
 
   if (isHoneypotTripped || isWebdriver || isTimingTrapTripped || isBadFingerprint) {
     if (isWebdriver) logAbuseEvent({ type: "webdriver_detected", ip, detail: "apply-presign" });
@@ -66,6 +66,7 @@ export async function presignResumeUpload(rawInput: unknown): Promise<PresignRes
     !checkRateLimit(`presign:${ip}`, PRESIGN_LIMIT, PRESIGN_WINDOW_MS, {
       ip,
       source: "apply-presign",
+      scope: "PUBLIC",
       fingerprint: fp || undefined,
     })
   ) {

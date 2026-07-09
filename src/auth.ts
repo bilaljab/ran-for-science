@@ -9,7 +9,15 @@ import { getLockoutRemainingMs, recordLoginFailure, recordLoginSuccess } from "@
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { isKnownBadFingerprint, recordSuspiciousFingerprint } from "@/lib/fingerprint";
 
-const LOGIN_LIMIT = 5;
+// Deliberately higher than login-attempts.ts's fingerprint-escalation
+// threshold (8): this fixed-window limiter and the progressive lockout in
+// login-attempts.ts key off the same ~15-minute window, and this check runs
+// BEFORE recordLoginFailure is ever called. If this limit were <= 8, every
+// attempt past it would be rejected here first, and recordLoginFailure's
+// failure counter could never reach 8 — silently making that escalation
+// tier unreachable. This is the coarse backstop ceiling; the escalating
+// per-tier lockouts in login-attempts.ts are the primary defense.
+const LOGIN_LIMIT = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -57,14 +65,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // rather than just feeding it into the softer signal-based checks.
         if (credentials?.fpBot === "1") {
           logAbuseEvent({ type: "webdriver_detected", ip, detail: `login email=${normalizedEmail}` });
-          if (fp) void recordSuspiciousFingerprint(fp, "webdriver_detected login");
+          if (fp) void recordSuspiciousFingerprint(fp, "ADMIN", "webdriver_detected login");
           return null;
         }
 
         // Cheapest, highest-confidence check first: a device already flagged
         // by a prior lockout (possibly from a different IP) is rejected
-        // immediately, before touching the rate-limiter/DB.
-        if (await isKnownBadFingerprint(fp)) {
+        // immediately, before touching the rate-limiter/DB. Scoped to ADMIN —
+        // a block earned on the public contact/quote/apply forms must never
+        // lock an admin out of their own login, and vice versa.
+        if (await isKnownBadFingerprint(fp, "ADMIN")) {
           logAbuseEvent({ type: "login_rejected_known_bad_fingerprint", ip, detail: `email=${normalizedEmail}` });
           return null;
         }
@@ -90,7 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const rateLimitKey = `login:${ip}:${normalizedEmail}`;
-        if (!checkRateLimit(rateLimitKey, LOGIN_LIMIT, LOGIN_WINDOW_MS, { ip, source: "login" })) {
+        if (!checkRateLimit(rateLimitKey, LOGIN_LIMIT, LOGIN_WINDOW_MS, { ip, source: "login", scope: "ADMIN" })) {
           console.warn(`[auth] rate limit exceeded for login attempt from ip=${ip} email=${email}`);
           return null;
         }

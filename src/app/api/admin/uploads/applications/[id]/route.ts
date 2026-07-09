@@ -28,6 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     !checkRateLimit(`download:${session.user.id}`, DOWNLOAD_LIMIT, DOWNLOAD_WINDOW_MS, {
       ip,
       source: "resume-download",
+      scope: "ADMIN",
     })
   ) {
     return new NextResponse("Too many requests", { status: 429 });

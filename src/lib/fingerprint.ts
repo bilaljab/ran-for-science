@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { FingerprintScope } from "@/generated/prisma/enums";
 
 const BLOCK_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MAX_FINGERPRINT_LENGTH = 128;
@@ -18,19 +19,29 @@ const MAX_FINGERPRINT_LENGTH = 128;
  * bad day — or a fingerprint collision with another device of the same
  * make/model/browser build — ages out automatically once the abuse stops.
  *
+ * `scope` keeps admin-login-triggered blocks and public-form-triggered
+ * blocks in separate namespaces (see the FingerprintScope doc comment in
+ * schema.prisma) — required, not optional/defaulted, so every call site has
+ * to make an explicit choice rather than risk silently recreating the
+ * cross-contamination bug this schema previously had.
+ *
  * Privacy note: this deliberately does NOT store a fingerprint for every
  * visitor, only for devices that already tripped a real abuse threshold
  * elsewhere. This is honest, ready-to-adapt source material for a privacy
  * policy page describing this behavior — it is not itself a legal document.
  */
-export async function recordSuspiciousFingerprint(fingerprint: string, reason: string): Promise<void> {
+export async function recordSuspiciousFingerprint(
+  fingerprint: string,
+  scope: FingerprintScope,
+  reason: string
+): Promise<void> {
   if (!fingerprint || fingerprint.length > MAX_FINGERPRINT_LENGTH) return;
 
   try {
     const expiresAt = new Date(Date.now() + BLOCK_DURATION_MS);
     await prisma.blockedFingerprint.upsert({
-      where: { fingerprint },
-      create: { fingerprint, reason, blocked: true, expiresAt },
+      where: { fingerprint_scope: { fingerprint, scope } },
+      create: { fingerprint, scope, reason, blocked: true, expiresAt },
       update: { reason, blocked: true, expiresAt, strikes: { increment: 1 } },
     });
   } catch (error) {
@@ -44,13 +55,13 @@ export async function recordSuspiciousFingerprint(fingerprint: string, reason: s
  * login flow it's guarding. Same Graceful Fallback principle applied to the
  * external CAPTCHA check in lib/captcha.ts.
  */
-export async function isKnownBadFingerprint(fingerprint: unknown): Promise<boolean> {
+export async function isKnownBadFingerprint(fingerprint: unknown, scope: FingerprintScope): Promise<boolean> {
   if (typeof fingerprint !== "string" || !fingerprint || fingerprint.length > MAX_FINGERPRINT_LENGTH) {
     return false;
   }
 
   try {
-    const record = await prisma.blockedFingerprint.findUnique({ where: { fingerprint } });
+    const record = await prisma.blockedFingerprint.findUnique({ where: { fingerprint_scope: { fingerprint, scope } } });
     return !!record && record.blocked && record.expiresAt > new Date();
   } catch (error) {
     console.error("[fingerprint] lookup failed, failing open", error);

@@ -2,6 +2,7 @@ import { isIP } from "net";
 import { headers } from "next/headers";
 import { isIpBlocked, recordRateLimitViolation } from "@/lib/ip-reputation";
 import { logAbuseEvent } from "@/lib/abuse-log";
+import type { FingerprintScope } from "@/generated/prisma/enums";
 
 type Bucket = { count: number; resetAt: number };
 
@@ -51,7 +52,7 @@ export function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
-  reputation?: { ip: string; source: string; fingerprint?: string }
+  reputation?: { ip: string; source: string; scope: FingerprintScope; fingerprint?: string }
 ): boolean {
   const now = Date.now();
   sweepExpiredBuckets(now);
@@ -69,7 +70,7 @@ export function checkRateLimit(
   }
 
   if (bucket.count >= limit) {
-    if (reputation) recordRateLimitViolation(reputation.ip, reputation.source, reputation.fingerprint);
+    if (reputation) recordRateLimitViolation(reputation.ip, reputation.source, reputation.scope, reputation.fingerprint);
     return false;
   }
 
