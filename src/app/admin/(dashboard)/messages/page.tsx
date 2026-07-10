@@ -1,6 +1,7 @@
 import { getContactMessages } from "@/features/contact/data/contact.data";
 import { StatusSelect } from "@/components/admin/StatusSelect";
 import { updateMessageStatus } from "@/features/contact/actions/status.actions";
+import { DeleteMessageButton } from "@/features/contact/components/DeleteMessageButton";
 import { messageStatusOptions } from "@/features/contact/constants/status-labels";
 
 export default async function AdminMessagesPage() {
@@ -24,12 +25,15 @@ export default async function AdminMessagesPage() {
                   {message.phone ? ` · ${message.phone}` : ""}
                 </p>
               </div>
-              <StatusSelect
-                id={message.id}
-                status={message.status}
-                options={messageStatusOptions}
-                onChange={updateMessageStatus}
-              />
+              <div className="flex items-center gap-2">
+                <StatusSelect
+                  id={message.id}
+                  status={message.status}
+                  options={messageStatusOptions}
+                  onChange={updateMessageStatus}
+                />
+                <DeleteMessageButton id={message.id} />
+              </div>
             </div>
             <p className="mt-3 whitespace-pre-line text-sm text-primary-900/80">{message.message}</p>
             <p className="mt-3 text-xs text-primary-900/40">

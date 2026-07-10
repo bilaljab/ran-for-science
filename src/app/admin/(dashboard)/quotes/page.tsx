@@ -1,6 +1,7 @@
 import { getQuoteRequests } from "@/features/quotes/data/quotes.data";
 import { StatusSelect } from "@/components/admin/StatusSelect";
 import { updateQuoteStatus } from "@/features/quotes/actions/status.actions";
+import { DeleteQuoteButton } from "@/features/quotes/components/DeleteQuoteButton";
 import { serviceCategoryLabelsAr } from "@/features/quotes/constants/categories-ar";
 import { quoteStatusOptions } from "@/features/quotes/constants/status-labels";
 import { ServiceCategory } from "@/generated/prisma/enums";
@@ -67,7 +68,10 @@ export default async function AdminQuotesPage({
                   {quote.email} · {quote.phone}
                 </p>
               </div>
-              <StatusSelect id={quote.id} status={quote.status} options={quoteStatusOptions} onChange={updateQuoteStatus} />
+              <div className="flex items-center gap-2">
+                <StatusSelect id={quote.id} status={quote.status} options={quoteStatusOptions} onChange={updateQuoteStatus} />
+                <DeleteQuoteButton id={quote.id} />
+              </div>
             </div>
             <p className="mt-3 whitespace-pre-line text-sm text-primary-900/80">{quote.message}</p>
             <p className="mt-3 text-xs text-primary-900/40">

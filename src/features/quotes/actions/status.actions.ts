@@ -31,3 +31,22 @@ export async function updateQuoteStatus(id: string, status: string) {
 
   revalidatePath("/admin/quotes");
 }
+
+export async function deleteQuote(id: string) {
+  const session = await requireAdmin();
+
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) return;
+
+  await prisma.serviceQuoteRequest.deleteMany({ where: { id: parsedId.data } });
+
+  await logAdminAction({
+    adminUserId: session.user.id,
+    action: "quote.delete",
+    entityType: "ServiceQuoteRequest",
+    entityId: parsedId.data,
+    ip: await getClientIp(),
+  });
+
+  revalidatePath("/admin/quotes");
+}

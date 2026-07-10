@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Turnstile } from "@/components/ui/Turnstile";
 import { BrowserFingerprint } from "@/components/ui/BrowserFingerprint";
 import { FormTimingGuard } from "@/components/ui/FormTimingGuard";
+import { SuccessToast } from "@/components/ui/SuccessToast";
 
 type Phase = "idle" | "presigning" | "uploading";
 
@@ -164,11 +165,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         {isBusy ? t("common.submitting") : t("common.applyNow")}
       </Button>
 
-      {state.success && (
-        <p className="rounded-md bg-mint-50 px-4 py-3 text-sm font-medium text-primary-700">
-          {t("jobs.applyForm.success")}
-        </p>
-      )}
+      <SuccessToast state={state} message={t("jobs.applyForm.success")} />
     </form>
   );
 }

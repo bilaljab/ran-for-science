@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/require-admin";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/rate-limit";
+import { deleteResumeFile } from "@/lib/storage";
 import type { ActionState } from "@/lib/actions/types";
 import { ApplicationStatus } from "@/generated/prisma/enums";
 
@@ -81,4 +82,36 @@ export async function updateApplicationNotes(
   revalidatePath("/admin/applications");
   revalidatePath(`/admin/applications/${parsedId.data}`);
   return { success: true };
+}
+
+export async function deleteApplication(id: string) {
+  const session = await requireAdmin();
+
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) return;
+
+  const existing = await prisma.jobApplication.findUnique({
+    where: { id: parsedId.data },
+    select: { resumeUrl: true },
+  });
+  if (!existing) return;
+
+  await prisma.jobApplication.deleteMany({ where: { id: parsedId.data } });
+
+  try {
+    await deleteResumeFile(existing.resumeUrl);
+  } catch (error) {
+    console.error("[application.delete] failed to delete resume file from storage", parsedId.data, error);
+  }
+
+  await logAdminAction({
+    adminUserId: session.user.id,
+    action: "application.delete",
+    entityType: "JobApplication",
+    entityId: parsedId.data,
+    ip: await getClientIp(),
+  });
+
+  revalidatePath("/admin/applications");
+  revalidatePath(`/admin/applications/${parsedId.data}`);
 }

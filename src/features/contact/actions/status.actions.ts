@@ -31,3 +31,22 @@ export async function updateMessageStatus(id: string, status: string) {
 
   revalidatePath("/admin/messages");
 }
+
+export async function deleteMessage(id: string) {
+  const session = await requireAdmin();
+
+  const parsedId = idSchema.safeParse(id);
+  if (!parsedId.success) return;
+
+  await prisma.contactMessage.deleteMany({ where: { id: parsedId.data } });
+
+  await logAdminAction({
+    adminUserId: session.user.id,
+    action: "message.delete",
+    entityType: "ContactMessage",
+    entityId: parsedId.data,
+    ip: await getClientIp(),
+  });
+
+  revalidatePath("/admin/messages");
+}

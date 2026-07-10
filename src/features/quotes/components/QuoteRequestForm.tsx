@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Turnstile } from "@/components/ui/Turnstile";
 import { BrowserFingerprint } from "@/components/ui/BrowserFingerprint";
 import { FormTimingGuard } from "@/components/ui/FormTimingGuard";
+import { SuccessToast } from "@/components/ui/SuccessToast";
 
 export function QuoteRequestForm({ defaultCategory }: { defaultCategory: ServiceCategory }) {
   const t = useTranslations();
@@ -97,11 +98,7 @@ export function QuoteRequestForm({ defaultCategory }: { defaultCategory: Service
         {pending ? t("common.submitting") : t("common.requestQuote")}
       </Button>
 
-      {state.success && (
-        <p className="rounded-md bg-mint-50 px-4 py-3 text-sm font-medium text-primary-700">
-          {t("services.quoteForm.success")}
-        </p>
-      )}
+      <SuccessToast state={state} message={t("services.quoteForm.success")} />
     </form>
   );
 }

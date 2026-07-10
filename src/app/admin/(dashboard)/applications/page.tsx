@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getJobApplications, getJobTitlesForFilter } from "@/features/jobs/data/jobs.data";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { DeleteApplicationButton } from "@/features/jobs/components/DeleteApplicationButton";
 import {
   applicationStatusLabels,
   applicationStatusTones,
@@ -84,12 +85,15 @@ export default async function AdminApplicationsPage({
                   {app.createdAt.toLocaleDateString("ar-SA")}
                 </td>
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/admin/applications/${app.id}`}
-                    className="text-sm font-semibold text-primary-600 hover:text-primary-700"
-                  >
-                    عرض
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/admin/applications/${app.id}`}
+                      className="text-sm font-semibold text-primary-600 hover:text-primary-700"
+                    >
+                      عرض
+                    </Link>
+                    <DeleteApplicationButton id={app.id} />
+                  </div>
                 </td>
               </tr>
             ))}

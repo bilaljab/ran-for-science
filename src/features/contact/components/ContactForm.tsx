@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Turnstile } from "@/components/ui/Turnstile";
 import { BrowserFingerprint } from "@/components/ui/BrowserFingerprint";
 import { FormTimingGuard } from "@/components/ui/FormTimingGuard";
+import { SuccessToast } from "@/components/ui/SuccessToast";
 
 export function ContactForm() {
   const t = useTranslations();
@@ -79,11 +80,7 @@ export function ContactForm() {
         {pending ? t("common.submitting") : t("common.send")}
       </Button>
 
-      {state.success && (
-        <p className="rounded-md bg-mint-50 px-4 py-3 text-sm font-medium text-primary-700">
-          {t("contact.form.success")}
-        </p>
-      )}
+      <SuccessToast state={state} message={t("contact.form.success")} />
     </form>
   );
 }
