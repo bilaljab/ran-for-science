@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getPublishedJobBySlug } from "@/features/jobs/data/jobs.data";
@@ -90,10 +89,17 @@ export default async function JobDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
-      <Script
-        id="job-posting-jsonld"
+      {/* Deliberately a raw <script>, not next/script — Next.js's own docs
+          for JSON-LD are explicit: "next/script is optimized for loading and
+          executing JavaScript. Since JSON-LD is structured data, not
+          executable code, a native <script> tag is the right choice here."
+          next/script's afterInteractive strategy only inserts non-src inline
+          content client-side after hydration (verified: it's absent from the
+          actual server-rendered HTML, only present in the RSC hydration
+          payload), which would hide this from any crawler/tool that doesn't
+          execute JS — defeating the entire point of adding it. */}
+      <script
         type="application/ld+json"
-        strategy="afterInteractive"
         // Job title/description are admin-authored (not public user input —
         // see requireAdmin() on createJob/updateJob), but `<` is still
         // escaped to `<` so a literal "</script>" inside the text can

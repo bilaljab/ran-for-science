@@ -116,21 +116,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!admin) {
           console.warn(`[auth] failed login attempt (unknown email) from ip=${ip}`);
-          recordLoginFailure(ipLockKey, ip, "ip-spray", fp);
+          recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
         if (!isValid) {
           console.warn(`[auth] failed login attempt (bad password) from ip=${ip} email=${email}`);
-          recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, fp);
-          recordLoginFailure(ipLockKey, ip, "ip-spray", fp);
+          recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+          recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
         if (!admin.emailVerified) {
           console.warn(`[auth] login blocked (email not verified) for ip=${ip} email=${email}`);
-          recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, fp);
-          recordLoginFailure(ipLockKey, ip, "ip-spray", fp);
+          recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+          recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
@@ -141,8 +141,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               : false;
           if (!isCodeValid) {
             console.warn(`[auth] login blocked (invalid/missing MFA code) for ip=${ip} email=${email}`);
-            recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, fp);
-            recordLoginFailure(ipLockKey, ip, "ip-spray", fp);
+            recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+            recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
             return null;
           }
         }

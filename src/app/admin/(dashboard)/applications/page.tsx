@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getJobApplications, getJobTitlesForFilter } from "@/features/jobs/data/jobs.data";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { DeleteApplicationButton } from "@/features/jobs/components/DeleteApplicationButton";
+import { DeleteButton } from "@/components/admin/DeleteButton";
+import { deleteApplication } from "@/features/jobs/actions/application-status.actions";
 import {
   applicationStatusLabels,
   applicationStatusTones,
@@ -92,7 +93,10 @@ export default async function AdminApplicationsPage({
                     >
                       عرض
                     </Link>
-                    <DeleteApplicationButton id={app.id} />
+                    <DeleteButton
+                      action={deleteApplication.bind(null, app.id)}
+                      confirmMessage="هل أنت متأكد من حذف هذا الطلب؟"
+                    />
                   </div>
                 </td>
               </tr>

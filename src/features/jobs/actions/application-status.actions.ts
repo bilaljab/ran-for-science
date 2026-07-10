@@ -63,13 +63,21 @@ export async function updateApplicationNotes(
     return { success: false, message: "حالة غير صالحة" };
   }
 
-  await prisma.jobApplication.update({
+  // updateMany, not update: the row can now legitimately disappear between
+  // this admin loading the detail page and submitting this form (another
+  // admin's deleteApplication below) — update() would throw P2025 in that
+  // case, surfacing as an unhandled 500 instead of a normal "not found".
+  const updated = await prisma.jobApplication.updateMany({
     where: { id: parsedId.data },
     data: {
       status: parsed.data.status as ApplicationStatus,
       adminNotes: parsed.data.adminNotes || null,
     },
   });
+
+  if (updated.count === 0) {
+    return { success: false, message: "الطلب غير موجود" };
+  }
 
   await logAdminAction({
     adminUserId: session.user.id,

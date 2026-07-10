@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { readResumeFile, detectResumeContentType, deleteResumeFile } from "@/lib/storage";
-import { jobApplicationSchema, resumeRefSchema } from "@/features/jobs/validations/application.schema";
+import { jobApplicationSchema, resumeRefSchema, MAX_RESUME_SIZE_BYTES } from "@/features/jobs/validations/application.schema";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
 import { logAbuseEvent } from "@/lib/abuse-log";
@@ -85,6 +85,16 @@ export async function submitJobApplication(
     buffer = await readResumeFile(key);
   } catch (error) {
     console.error("[apply] failed to read back uploaded resume", error);
+    return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
+  }
+
+  // The presign step only ever saw a client-declared fileSize (before any
+  // bytes existed server-side) — a direct PUT to the presigned URL can send
+  // whatever it wants regardless of what was declared. Re-check the actual
+  // uploaded size here, the same way detectResumeContentType re-checks the
+  // actual content, instead of trusting the earlier client-reported number.
+  if (buffer.length === 0 || buffer.length > MAX_RESUME_SIZE_BYTES) {
+    await deleteResumeFile(key).catch((error) => console.error("[apply] failed to delete oversized upload", error));
     return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 

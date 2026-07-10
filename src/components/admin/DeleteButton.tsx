@@ -1,14 +1,24 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { deleteQuote } from "@/features/quotes/actions/status.actions";
 
-export function DeleteQuoteButton({ id }: { id: string }) {
+/**
+ * Shared confirm-then-delete icon button for the admin dashboard — used for
+ * job applications, quote requests, and contact messages, each just binding
+ * their own delete Server Action and confirmation text.
+ */
+export function DeleteButton({
+  action,
+  confirmMessage,
+}: {
+  action: () => Promise<void>;
+  confirmMessage: string;
+}) {
   return (
     <form
-      action={deleteQuote.bind(null, id)}
+      action={action}
       onSubmit={(e) => {
-        if (!confirm("هل أنت متأكد من حذف طلب عرض السعر هذا؟")) {
+        if (!confirm(confirmMessage)) {
           e.preventDefault();
         }
       }}

@@ -43,7 +43,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const buffer = await readResumeFile(application.resumeUrl);
+  // The application row can be deleted (by another admin, via
+  // deleteApplication) between the lookup above and this read — treat a
+  // missing storage object the same as a missing row, not an unhandled 500.
+  let buffer: Buffer;
+  try {
+    buffer = await readResumeFile(application.resumeUrl);
+  } catch (error) {
+    console.error(`[admin] resume file missing for application ${parsedId.data}`, error);
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   await logAdminAction({
     adminUserId: session.user.id,

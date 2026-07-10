@@ -1,5 +1,6 @@
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { recordSuspiciousFingerprint } from "@/lib/fingerprint";
+import type { FingerprintScope } from "@/generated/prisma/enums";
 
 type AttemptState = { failures: number; windowStart: number; lockedUntil: number };
 
@@ -67,7 +68,24 @@ export function getLockoutRemainingMs(key: string): number {
   return remaining > 0 ? remaining : 0;
 }
 
-export function recordLoginFailure(key: string, ip: string, label: string, fingerprint?: string): void {
+/**
+ * `scope` is required, not defaulted to "ADMIN" — this module's lockout
+ * mechanics are generic (keyed by whatever `key` the caller passes) and
+ * nothing here actually guarantees every caller is admin-login code. A
+ * hardcoded default would silently re-escalate into the wrong
+ * BlockedFingerprint namespace the moment a second, non-admin consumer
+ * (e.g. a future partner-portal login or public account-recovery lockout)
+ * reused this otherwise-generic module — exactly the cross-contamination bug
+ * the ADMIN/PUBLIC scope split exists to prevent. Forcing every call site to
+ * pass it explicitly keeps that choice visible and reviewable.
+ */
+export function recordLoginFailure(
+  key: string,
+  ip: string,
+  label: string,
+  scope: FingerprintScope,
+  fingerprint?: string
+): void {
   const now = Date.now();
   sweep(now);
 
@@ -82,7 +100,7 @@ export function recordLoginFailure(key: string, ip: string, label: string, finge
     state.lockedUntil = now + lockMs;
     logAbuseEvent({ type: "login_lockout", ip, detail: `${label} failures=${state.failures} lockMs=${lockMs}` });
     if (fingerprint && state.failures >= FINGERPRINT_ESCALATION_THRESHOLD) {
-      void recordSuspiciousFingerprint(fingerprint, "ADMIN", `login_lockout ${label}`);
+      void recordSuspiciousFingerprint(fingerprint, scope, `login_lockout ${label}`);
     }
   }
   attempts.set(key, state);

@@ -1,7 +1,7 @@
 import { getContactMessages } from "@/features/contact/data/contact.data";
 import { StatusSelect } from "@/components/admin/StatusSelect";
-import { updateMessageStatus } from "@/features/contact/actions/status.actions";
-import { DeleteMessageButton } from "@/features/contact/components/DeleteMessageButton";
+import { DeleteButton } from "@/components/admin/DeleteButton";
+import { updateMessageStatus, deleteMessage } from "@/features/contact/actions/status.actions";
 import { messageStatusOptions } from "@/features/contact/constants/status-labels";
 
 export default async function AdminMessagesPage() {
@@ -32,7 +32,10 @@ export default async function AdminMessagesPage() {
                   options={messageStatusOptions}
                   onChange={updateMessageStatus}
                 />
-                <DeleteMessageButton id={message.id} />
+                <DeleteButton
+                  action={deleteMessage.bind(null, message.id)}
+                  confirmMessage="هل أنت متأكد من حذف هذه الرسالة؟"
+                />
               </div>
             </div>
             <p className="mt-3 whitespace-pre-line text-sm text-primary-900/80">{message.message}</p>

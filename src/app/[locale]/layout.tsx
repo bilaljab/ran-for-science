@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Tajawal } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -103,12 +102,17 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <Script
-          id="speculation-rules"
-          type="speculationrules"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{ __html: SPECULATION_RULES }}
-        />
+        {/* Deliberately a raw <script>, not next/script: speculation rules are
+            declarative data the browser reads, not executable JS — next/script
+            is built for loading/executing third-party JS and (per Next.js's
+            own docs for the analogous JSON-LD case) defers non-src inline
+            content until after hydration via a client-side document.createElement,
+            which would remove this from the actual server-rendered HTML and
+            delay prerendering activation. A raw tag here means React logs a
+            dev-only "script tag" warning if this subtree is ever client-rendered
+            (e.g. Fast Refresh) — cosmetic, and outweighed by keeping this in the
+            real initial HTML where the browser's own parser processes it. */}
+        <script type="speculationrules" dangerouslySetInnerHTML={{ __html: SPECULATION_RULES }} />
         <NextIntlClientProvider>
           <Header />
           <main className="flex-1">{children}</main>

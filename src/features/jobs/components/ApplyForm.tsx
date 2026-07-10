@@ -24,20 +24,35 @@ export function ApplyForm({ jobId }: { jobId: string }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [clientError, setClientError] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  // A plain ref, not state: needs to block a second submit synchronously and
+  // immediately, without waiting for a re-render — `phase`/`pending` are only
+  // guaranteed to reflect "busy" after React has processed a state update,
+  // which leaves a window right after the transition starts (see the end of
+  // handleSubmit) where a fast double-click could slip through.
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (state.success) {
       formRef.current?.reset();
     }
+    // A new `state` here means submitJobApplication's transition has settled
+    // (success or a server-side error) — safe to allow another submit.
+    isSubmittingRef.current = false;
   }, [state]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     setClientError(null);
     setResumeError(null);
 
     const form = formRef.current;
-    if (!form) return;
+    if (!form) {
+      isSubmittingRef.current = false;
+      return;
+    }
 
     const fileInput = form.elements.namedItem("resume") as HTMLInputElement | null;
     const file = fileInput?.files?.[0];
@@ -46,6 +61,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     const fileCheck = resumeFileSchema.safeParse(file);
     if (!fileCheck.success) {
       setResumeError(fileCheck.error.issues[0]?.message ?? t("jobs.applyForm.errors.invalidFile"));
+      isSubmittingRef.current = false;
       return;
     }
     const validFile = fileCheck.data;
@@ -67,6 +83,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     if (!presignResult.success) {
       setPhase("idle");
       setClientError(presignResult.message);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -77,12 +94,26 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     } catch {
       setPhase("idle");
       setClientError(t("jobs.applyForm.errors.uploadFailed"));
+      isSubmittingRef.current = false;
       return;
     }
 
     snapshot.delete("resume");
     snapshot.set("resumeKey", presignResult.key);
     snapshot.set("resumeFileName", validFile.name);
+
+    // Re-read the Turnstile token from the live DOM instead of trusting the
+    // value captured in `snapshot` at click-time: Turnstile auto-refreshes
+    // its hidden input in place before the original token expires, but that
+    // refresh only reaches the real DOM element, not our earlier in-memory
+    // FormData snapshot. On a slow upload long enough for a refresh to have
+    // happened, submitting the stale captured value would fail verifyCaptcha
+    // even though the widget already has a valid one sitting in the form.
+    const turnstileInput = form.elements.namedItem("cf-turnstile-response") as HTMLInputElement | null;
+    if (turnstileInput) {
+      snapshot.set("cf-turnstile-response", turnstileInput.value);
+    }
+
     startTransition(() => {
       formAction(snapshot);
     });
