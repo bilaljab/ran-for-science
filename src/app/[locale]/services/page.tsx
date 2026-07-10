@@ -130,7 +130,7 @@ export default async function ServicesPage({
         <h2 className="text-2xl font-bold text-primary-800">{t("services.quoteForm.title")}</h2>
         <p className="mt-2 text-sm text-primary-900/70">{t("services.quoteForm.subtitle")}</p>
         <div className="mt-8">
-          <QuoteRequestForm defaultCategory={defaultCategory} />
+          <QuoteRequestForm key={defaultCategory} defaultCategory={defaultCategory} />
         </div>
       </section>
     </div>
