@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Tajawal } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -102,7 +103,12 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <script type="speculationrules" dangerouslySetInnerHTML={{ __html: SPECULATION_RULES }} />
+        <Script
+          id="speculation-rules"
+          type="speculationrules"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: SPECULATION_RULES }}
+        />
         <NextIntlClientProvider>
           <Header />
           <main className="flex-1">{children}</main>

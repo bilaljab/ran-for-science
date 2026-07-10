@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getPublishedJobBySlug } from "@/features/jobs/data/jobs.data";
@@ -89,8 +90,10 @@ export default async function JobDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
-      <script
+      <Script
+        id="job-posting-jsonld"
         type="application/ld+json"
+        strategy="afterInteractive"
         // Job title/description are admin-authored (not public user input —
         // see requireAdmin() on createJob/updateJob), but `<` is still
         // escaped to `<` so a literal "</script>" inside the text can
