@@ -13,7 +13,13 @@
     "successTitle": "Submitted Successfully",
     "errorTitle": "Something Went Wrong",
     "requiredField": "This field is required",
-    "phone": "0560464352"
+    "phone": "0560464352",
+    "errorPage": {
+      "title": "Something went wrong",
+      "description": "We're sorry for the inconvenience — an error occurred while loading this page. Try again or head back to the homepage.",
+      "retry": "Try again",
+      "home": "Homepage"
+    }
   },
   "nav": {
     "home": "Home",
