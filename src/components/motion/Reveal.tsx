@@ -33,9 +33,12 @@ export function Reveal({
     return <div className={className}>{children}</div>;
   }
 
+  // No opacity in hidden state — opacity:0 delays LCP because Chrome waits
+  // for the element to be visible before recording the paint time. Transform
+  // and filter animations don't affect LCP, so we animate only those.
   const variants: Variants = {
-    hidden: { opacity: 0, y: yOffset, filter: `blur(${blur})` },
-    visible: { opacity: 1, y: 0, filter: "blur(0px)" },
+    hidden: { y: yOffset, filter: `blur(${blur})` },
+    visible: { y: 0, filter: "blur(0px)" },
   };
 
   return (

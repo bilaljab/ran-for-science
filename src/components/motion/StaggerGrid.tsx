@@ -3,14 +3,16 @@
 import { m, useReducedMotion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
 
+// No opacity in any state — same reasoning as Reveal.tsx: opacity:0 blocks
+// LCP paint. The y-only slide-in is visually equivalent and LCP-safe.
 const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
 };
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+  hidden: { y: 20 },
+  visible: { y: 0, transition: { duration: 0.45, ease: "easeOut" } },
 };
 
 export function StaggerGrid({ children, className }: { children: ReactNode; className?: string }) {
