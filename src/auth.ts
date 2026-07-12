@@ -8,6 +8,7 @@ import { verifyTwoFactorCode } from "@/lib/mfa";
 import { getLockoutRemainingMs, recordLoginFailure, recordLoginSuccess } from "@/lib/login-attempts";
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { isKnownBadFingerprint, recordSuspiciousFingerprint } from "@/lib/fingerprint";
+import { logger } from "@/lib/logger";
 
 // Deliberately higher than login-attempts.ts's fingerprint-escalation
 // threshold (8): this fixed-window limiter and the progressive lockout in
@@ -93,15 +94,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailLockKey = `login-email:${normalizedEmail}`;
         const ipLockKey = `login-ip:${ip}`;
 
-        const lockedMs = Math.max(getLockoutRemainingMs(emailLockKey), getLockoutRemainingMs(ipLockKey));
+        const lockedMs = Math.max(
+          await getLockoutRemainingMs(emailLockKey),
+          await getLockoutRemainingMs(ipLockKey)
+        );
         if (lockedMs > 0) {
           logAbuseEvent({ type: "login_rejected_locked", ip, detail: `email=${normalizedEmail}` });
           return null;
         }
 
         const rateLimitKey = `login:${ip}:${normalizedEmail}`;
-        if (!checkRateLimit(rateLimitKey, LOGIN_LIMIT, LOGIN_WINDOW_MS, { ip, source: "login", scope: "ADMIN" })) {
-          console.warn(`[auth] rate limit exceeded for login attempt from ip=${ip} email=${email}`);
+        if (!(await checkRateLimit(rateLimitKey, LOGIN_LIMIT, LOGIN_WINDOW_MS, { ip, source: "login", scope: "ADMIN" }))) {
+          logger.warn({ ip, email }, "auth_login_rate_limited");
           return null;
         }
 
@@ -115,22 +119,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const isValid = await verifyPassword(password, admin?.passwordHash ?? DUMMY_PASSWORD_HASH);
 
         if (!admin) {
-          console.warn(`[auth] failed login attempt (unknown email) from ip=${ip}`);
-          recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
+          logger.warn({ ip }, "auth_login_failed_unknown_email");
+          await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
         if (!isValid) {
-          console.warn(`[auth] failed login attempt (bad password) from ip=${ip} email=${email}`);
-          recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
-          recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
+          logger.warn({ ip, email }, "auth_login_failed_bad_password");
+          await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+          await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
         if (!admin.emailVerified) {
-          console.warn(`[auth] login blocked (email not verified) for ip=${ip} email=${email}`);
-          recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
-          recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
+          logger.warn({ ip, email }, "auth_login_blocked_email_unverified");
+          await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+          await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
@@ -140,21 +144,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               ? await verifyTwoFactorCode(admin.twoFactorSecret, mfaCode)
               : false;
           if (!isCodeValid) {
-            console.warn(`[auth] login blocked (invalid/missing MFA code) for ip=${ip} email=${email}`);
-            recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
-            recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
+            logger.warn({ ip, email }, "auth_login_blocked_invalid_mfa");
+            await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+            await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
             return null;
           }
         }
 
-        recordLoginSuccess(emailLockKey);
-        recordLoginSuccess(ipLockKey);
+        await recordLoginSuccess(emailLockKey);
+        await recordLoginSuccess(ipLockKey);
 
         return {
           id: admin.id,
           email: admin.email,
           name: admin.name,
           passwordChangedAt: admin.passwordChangedAt.getTime(),
+          sessionVersion: admin.sessionVersion,
         };
       },
     }),

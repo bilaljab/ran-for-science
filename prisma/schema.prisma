@@ -77,6 +77,14 @@ model AdminUser {
   name              String
   emailVerified     DateTime?
   passwordChangedAt DateTime @default(now())
+  // Fast, explicit "log out everywhere" primitive, separate from
+  // passwordChangedAt — see revokeAllSessions() in
+  // lib/actions/admin-session.actions.ts. Both fields independently
+  // invalidate every live JWT (checked in require-admin.ts's
+  // isSessionStale()); passwordChangedAt keeps its own audit/metadata role,
+  // this is the general-purpose "invalidate everything" counter that a
+  // password change also bumps as a side effect.
+  sessionVersion    Int      @default(0)
   twoFactorSecret   String?
   twoFactorEnabled  Boolean  @default(false)
   createdAt         DateTime @default(now())

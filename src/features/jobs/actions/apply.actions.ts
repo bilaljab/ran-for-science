@@ -8,6 +8,7 @@ import { verifyCaptcha } from "@/lib/captcha";
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { isKnownBadFingerprint } from "@/lib/fingerprint";
 import { isTooFast } from "@/lib/timing-trap";
+import { logger } from "@/lib/logger";
 import type { ActionState } from "@/lib/actions/types";
 
 const SUBMIT_LIMIT = 5;
@@ -39,7 +40,7 @@ export async function submitJobApplication(
     return { success: true };
   }
 
-  if (!checkRateLimit(`apply:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "apply", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined })) {
+  if (!(await checkRateLimit(`apply:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "apply", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined }))) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 
@@ -84,7 +85,7 @@ export async function submitJobApplication(
   try {
     buffer = await readResumeFile(key);
   } catch (error) {
-    console.error("[apply] failed to read back uploaded resume", error);
+    logger.error({ err: error }, "apply_resume_readback_failed");
     return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 
@@ -94,13 +95,13 @@ export async function submitJobApplication(
   // uploaded size here, the same way detectResumeContentType re-checks the
   // actual content, instead of trusting the earlier client-reported number.
   if (buffer.length === 0 || buffer.length > MAX_RESUME_SIZE_BYTES) {
-    await deleteResumeFile(key).catch((error) => console.error("[apply] failed to delete oversized upload", error));
+    await deleteResumeFile(key).catch((error) => logger.error({ err: error }, "apply_delete_oversized_upload_failed"));
     return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 
   const detectedMime = await detectResumeContentType(buffer);
   if (!detectedMime) {
-    await deleteResumeFile(key).catch((error) => console.error("[apply] failed to delete invalid upload", error));
+    await deleteResumeFile(key).catch((error) => logger.error({ err: error }, "apply_delete_invalid_upload_failed"));
     return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 

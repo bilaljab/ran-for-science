@@ -32,11 +32,11 @@ export async function requestPasswordReset(
 ): Promise<ActionState> {
   const ip = await getClientIp();
   if (
-    !checkRateLimit(`reset-request:${ip}`, RESET_REQUEST_LIMIT, RESET_REQUEST_WINDOW_MS, {
+    !(await checkRateLimit(`reset-request:${ip}`, RESET_REQUEST_LIMIT, RESET_REQUEST_WINDOW_MS, {
       ip,
       source: "reset-request",
       scope: "ADMIN",
-    })
+    }))
   ) {
     // Same generic message on rate-limit as on success — don't leak state to a prober.
     return { success: true, message: GENERIC_MESSAGE };
@@ -78,11 +78,11 @@ export async function resetPassword(
 ): Promise<ActionState> {
   const ip = await getClientIp();
   if (
-    !checkRateLimit(`reset-confirm:${ip}`, RESET_CONFIRM_LIMIT, RESET_CONFIRM_WINDOW_MS, {
+    !(await checkRateLimit(`reset-confirm:${ip}`, RESET_CONFIRM_LIMIT, RESET_CONFIRM_WINDOW_MS, {
       ip,
       source: "reset-confirm",
       scope: "ADMIN",
-    })
+    }))
   ) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
@@ -120,7 +120,10 @@ export async function resetPassword(
   await prisma.$transaction([
     prisma.adminUser.update({
       where: { id: resetToken.adminUserId },
-      data: { passwordHash, passwordChangedAt: now },
+      // sessionVersion increment (not just passwordChangedAt) so a password
+      // reset also kills any other live session immediately — see
+      // require-admin.ts's isSessionStale().
+      data: { passwordHash, passwordChangedAt: now, sessionVersion: { increment: 1 } },
     }),
     // Invalidate any other outstanding reset tokens for this account.
     prisma.passwordResetToken.updateMany({

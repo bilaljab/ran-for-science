@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 const FROM_ADDRESS = process.env.EMAIL_FROM ?? "RAN For Science <no-reply@ranforscience.com>";
 
 interface SendEmailInput {
@@ -20,18 +22,17 @@ export function assertEmailConfigured(): void {
   }
 
   if (!process.env.RESEND_API_KEY) {
-    console.warn(
-      "[email] RESEND_API_KEY is not set — running in dev mode. " +
-        "Password reset / verification links will be printed to this console instead of emailed."
-    );
+    logger.warn("email_resend_not_configured_dev_mode");
   }
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailInput): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
-    console.warn(
-      `[email:DEV] Not actually sending an email. to=${to} subject="${subject}"\n${html}`
-    );
+    // Deliberately a raw console.log, not the structured logger: this is a
+    // developer affordance for reading an otherwise-unsent reset/verification
+    // link directly in the terminal, not an operational event — JSON-escaping
+    // the HTML body would make the actual link harder to read/copy.
+    console.log(`[email:DEV] Not actually sending an email. to=${to} subject="${subject}"\n${html}`);
     return;
   }
 

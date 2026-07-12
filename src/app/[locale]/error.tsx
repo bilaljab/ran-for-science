@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import * as Sentry from "@sentry/nextjs";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/Button";
 
@@ -10,6 +11,7 @@ export default function LocaleError({ error, reset }: { error: Error & { digest?
 
   useEffect(() => {
     console.error("[error-boundary]", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

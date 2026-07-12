@@ -6,10 +6,16 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { deleteResumeFile } from "@/lib/storage";
+import { logger } from "@/lib/logger";
 import type { ActionState } from "@/lib/actions/types";
 import { ApplicationStatus } from "@/generated/prisma/enums";
+
+// Same shared `admin-mutate:` key/limit used across every admin mutation —
+// see admin.actions.ts's comment for why it's shared, not per-feature.
+const ADMIN_MUTATE_LIMIT = 100;
+const ADMIN_MUTATE_WINDOW_MS = 5 * 60 * 1000;
 
 const applicationStatusValues = Object.values(ApplicationStatus) as [string, ...string[]];
 
@@ -20,6 +26,17 @@ const notesSchema = z.object({
 
 export async function updateApplicationStatus(id: string, status: string): Promise<boolean> {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-application-status-update",
+      scope: "ADMIN",
+    }))
+  ) {
+    return false;
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success || !Object.values(ApplicationStatus).includes(status as ApplicationStatus)) {
@@ -36,7 +53,7 @@ export async function updateApplicationStatus(id: string, status: string): Promi
     action: "application.status_update",
     entityType: "JobApplication",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/applications");
@@ -49,6 +66,17 @@ export async function updateApplicationNotes(
   formData: FormData
 ): Promise<ActionState> {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-application-notes-update",
+      scope: "ADMIN",
+    }))
+  ) {
+    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -85,7 +113,7 @@ export async function updateApplicationNotes(
     action: "application.notes_update",
     entityType: "JobApplication",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/applications");
@@ -95,6 +123,17 @@ export async function updateApplicationNotes(
 
 export async function deleteApplication(id: string) {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-application-delete",
+      scope: "ADMIN",
+    }))
+  ) {
+    return;
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) return;
@@ -110,7 +149,7 @@ export async function deleteApplication(id: string) {
   try {
     await deleteResumeFile(existing.resumeUrl);
   } catch (error) {
-    console.error("[application.delete] failed to delete resume file from storage", parsedId.data, error);
+    logger.error({ applicationId: parsedId.data, err: error }, "application_delete_resume_file_failed");
   }
 
   await logAdminAction({
@@ -118,7 +157,7 @@ export async function deleteApplication(id: string) {
     action: "application.delete",
     entityType: "JobApplication",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/applications");

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 type AuditEntry = {
   adminUserId: string;
@@ -21,6 +22,6 @@ export async function logAdminAction({ adminUserId, action, entityType, entityId
       data: { adminUserId, action, entityType, entityId, ip },
     });
   } catch (error) {
-    console.error("[audit] failed to write audit log entry", { action, entityType, entityId }, error);
+    logger.error({ action, entityType, entityId, err: error }, "audit_log_write_failed");
   }
 }

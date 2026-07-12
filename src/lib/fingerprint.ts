@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import type { FingerprintScope } from "@/generated/prisma/enums";
 
 const BLOCK_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -45,7 +46,7 @@ export async function recordSuspiciousFingerprint(
       update: { reason, blocked: true, expiresAt, strikes: { increment: 1 } },
     });
   } catch (error) {
-    console.error("[fingerprint] failed to record suspicious fingerprint", error);
+    logger.error({ err: error }, "fingerprint_record_failed");
   }
 }
 
@@ -54,6 +55,21 @@ export async function recordSuspiciousFingerprint(
  * a bug/outage in this lookup must never block the contact/quote/apply/
  * login flow it's guarding. Same Graceful Fallback principle applied to the
  * external CAPTCHA check in lib/captcha.ts.
+ *
+ * Accepted tradeoff, not an oversight: a MISSING fingerprint (as opposed to
+ * a malformed one) also falls into this "not blocked" branch, which means a
+ * device that already tripped a persisted block can evade re-detection on a
+ * later request simply by not sending `fp` at all. This is deliberate, not
+ * a gap to close by making a missing fingerprint fail closed instead —
+ * BrowserFingerprint.tsx's own doc comment establishes that fingerprinting
+ * is a best-effort, optional signal that legitimately comes back empty for
+ * real users (ad-blockers, restrictive CSP, slow networks) and "the form
+ * must still submit normally" in that case. Flipping this to fail-closed
+ * would silently reject exactly those legitimate users, not just the
+ * evading attacker. The other layers (rate limiting, IP-reputation,
+ * progressive lockout, CAPTCHA) do not have this exemption and still apply
+ * in full regardless of whether `fp` was sent — omitting it only evades
+ * this one specific, intentionally-optional layer, not the whole gauntlet.
  */
 export async function isKnownBadFingerprint(fingerprint: unknown, scope: FingerprintScope): Promise<boolean> {
   if (typeof fingerprint !== "string" || !fingerprint || fingerprint.length > MAX_FINGERPRINT_LENGTH) {
@@ -64,7 +80,7 @@ export async function isKnownBadFingerprint(fingerprint: unknown, scope: Fingerp
     const record = await prisma.blockedFingerprint.findUnique({ where: { fingerprint_scope: { fingerprint, scope } } });
     return !!record && record.blocked && record.expiresAt > new Date();
   } catch (error) {
-    console.error("[fingerprint] lookup failed, failing open", error);
+    logger.error({ err: error }, "fingerprint_lookup_failed_open");
     return false;
   }
 }

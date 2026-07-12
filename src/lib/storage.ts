@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import { readFile, unlink } from "fs/promises";
 import { fileTypeFromBuffer } from "file-type";
+import { logger } from "@/lib/logger";
 
 export const LOCAL_STORAGE_DIR = path.join(process.cwd(), "storage", "uploads", "resumes");
 
@@ -47,10 +48,7 @@ export function assertStorageConfigured(): void {
   }
 
   if (!r2Configured) {
-    console.warn(
-      "[storage] R2 is not configured — falling back to local disk storage (dev only). " +
-        "Uploaded resumes will NOT persist across deploys/restarts in a real deployment."
-    );
+    logger.warn("storage_r2_not_configured_using_local_disk");
   }
 }
 
@@ -83,6 +81,29 @@ export function buildResumeKey(declaredMimeType: string): string {
  * Content-Type header or R2 rejects the signature — content-type isn't a
  * trust boundary either way (detectResumeContentType is), so there's no
  * security benefit to that fragility.
+ *
+ * Known, accepted risk (not fixable from this signature alone): a presigned
+ * PUT URL — unlike a presigned POST policy — has no mechanism to bind a
+ * max Content-Length; SigV4 can only sign an EXACT byte count, which would
+ * reject every upload that isn't precisely that size, so no useful bound
+ * can be enforced here. This means a caller that obtains a presigned key
+ * (rate-limited to 10 per 10 minutes per IP — see presign-resume.actions.ts)
+ * can PUT an arbitrarily large object directly to R2 without ever calling
+ * submitJobApplication, which is the only place that checks
+ * MAX_RESUME_SIZE_BYTES and deletes on failure. Exposure is bounded by the
+ * presign rate limit, the 10-minute URL expiry, and the attacker's own
+ * upload bandwidth — not by anything at the storage layer. This does NOT
+ * expose data (downloads are always proxied through the authenticated
+ * admin route, which forces a fixed response Content-Type regardless of
+ * what's in the bucket) — the exposure is storage-cost/DoS, not
+ * confidentiality. Recommended mitigation outside application code: add an
+ * R2 lifecycle rule (Cloudflare dashboard) to auto-delete objects older
+ * than a few hours, cleaning up anything that was never confirmed via
+ * submitJobApplication. Switching to presigned POST with a
+ * content-length-range condition would enforce this at the protocol level
+ * instead, but that's a bigger change (rewrites the upload call in
+ * ApplyForm.tsx and the dev-only PUT stand-in route to match) than this
+ * pass covers.
  */
 export async function getResumeUploadUrl(key: string): Promise<string> {
   if (r2Configured) {

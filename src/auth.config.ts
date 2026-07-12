@@ -40,6 +40,7 @@ export const authConfig: NextAuthConfig = {
         token.name = user.name;
         token.email = user.email;
         token.passwordChangedAt = user.passwordChangedAt;
+        token.sessionVersion = user.sessionVersion;
       }
       return token;
     },
@@ -47,6 +48,7 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.passwordChangedAt = token.passwordChangedAt as number | undefined;
+        session.user.sessionVersion = token.sessionVersion as number | undefined;
       }
       return session;
     },

@@ -10,6 +10,11 @@ import type { Prisma } from "@/generated/prisma/client";
 // log or reflect back in the UI's `defaultValue`.
 const MAX_FILTER_LENGTH = 100;
 
+// Safety cap, not real pagination, for the admin-side list queries below —
+// see contact/data/contact.data.ts's identical comment. The public
+// getPublishedJobs already accepts its own optional `take`.
+const ADMIN_LIST_SAFETY_CAP = 200;
+
 function sanitizeFilter(value?: string): string | undefined {
   if (!value || value.length > MAX_FILTER_LENGTH) return undefined;
   return value;
@@ -64,6 +69,7 @@ export function getAdminJobs() {
   return prisma.jobPosting.findMany({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { applications: true } } },
+    take: ADMIN_LIST_SAFETY_CAP,
   });
 }
 
@@ -83,11 +89,16 @@ export function getJobApplications({ jobId, status }: { jobId?: string; status?:
     },
     orderBy: { createdAt: "desc" },
     include: { job: { select: { titleAr: true } } },
+    take: ADMIN_LIST_SAFETY_CAP,
   });
 }
 
 export function getJobTitlesForFilter() {
-  return prisma.jobPosting.findMany({ select: { id: true, titleAr: true }, orderBy: { createdAt: "desc" } });
+  return prisma.jobPosting.findMany({
+    select: { id: true, titleAr: true },
+    orderBy: { createdAt: "desc" },
+    take: ADMIN_LIST_SAFETY_CAP,
+  });
 }
 
 export function getJobApplicationDetail(id: string) {

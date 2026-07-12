@@ -7,9 +7,19 @@ import { requireAdmin } from "@/lib/require-admin";
 import { jobPostingSchema } from "@/features/jobs/validations/job.schema";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/actions/types";
 import type { JobStatus, JobType } from "@/generated/prisma/enums";
+
+// Defense-in-depth against a compromised admin session or a runaway script —
+// not a normal-usage throttle. Deliberately the SAME key prefix
+// (`admin-mutate:`) used across every admin mutation (jobs, applications,
+// quotes, messages), not a separate limit per feature — a per-feature limit
+// would let an attacker rack up the full limit in each area independently,
+// the same class of bypass this session's rate-limit rework was fixing for
+// the public forms.
+const ADMIN_MUTATE_LIMIT = 100;
+const ADMIN_MUTATE_WINDOW_MS = 5 * 60 * 1000;
 
 function parseJobForm(formData: FormData) {
   return jobPostingSchema.safeParse({
@@ -29,6 +39,17 @@ function parseJobForm(formData: FormData) {
 
 export async function createJob(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-job-create",
+      scope: "ADMIN",
+    }))
+  ) {
+    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
+  }
 
   const parsed = parseJobForm(formData);
   if (!parsed.success) {
@@ -55,7 +76,7 @@ export async function createJob(_prevState: ActionState, formData: FormData): Pr
     action: "job.create",
     entityType: "JobPosting",
     entityId: job.id,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/jobs");
@@ -68,6 +89,17 @@ export async function updateJob(
   formData: FormData
 ): Promise<ActionState> {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-job-update",
+      scope: "ADMIN",
+    }))
+  ) {
+    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) {
@@ -106,7 +138,7 @@ export async function updateJob(
     action: "job.update",
     entityType: "JobPosting",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/jobs");
@@ -115,6 +147,17 @@ export async function updateJob(
 
 export async function deleteJob(id: string) {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-job-delete",
+      scope: "ADMIN",
+    }))
+  ) {
+    return;
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) return;
@@ -126,7 +169,7 @@ export async function deleteJob(id: string) {
     action: "job.delete",
     entityType: "JobPosting",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/jobs");

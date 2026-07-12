@@ -5,11 +5,27 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { MessageStatus } from "@/generated/prisma/enums";
+
+// Same shared `admin-mutate:` key/limit used across every admin mutation —
+// see jobs/actions/admin.actions.ts's comment for why it's shared, not per-feature.
+const ADMIN_MUTATE_LIMIT = 100;
+const ADMIN_MUTATE_WINDOW_MS = 5 * 60 * 1000;
 
 export async function updateMessageStatus(id: string, status: string): Promise<boolean> {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-message-status-update",
+      scope: "ADMIN",
+    }))
+  ) {
+    return false;
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success || !Object.values(MessageStatus).includes(status as MessageStatus)) {
@@ -26,7 +42,7 @@ export async function updateMessageStatus(id: string, status: string): Promise<b
     action: "message.status_update",
     entityType: "ContactMessage",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/messages");
@@ -35,6 +51,17 @@ export async function updateMessageStatus(id: string, status: string): Promise<b
 
 export async function deleteMessage(id: string) {
   const session = await requireAdmin();
+
+  const ip = await getClientIp();
+  if (
+    !(await checkRateLimit(`admin-mutate:${session.user.id}`, ADMIN_MUTATE_LIMIT, ADMIN_MUTATE_WINDOW_MS, {
+      ip,
+      source: "admin-message-delete",
+      scope: "ADMIN",
+    }))
+  ) {
+    return;
+  }
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success) return;
@@ -46,7 +73,7 @@ export async function deleteMessage(id: string) {
     action: "message.delete",
     entityType: "ContactMessage",
     entityId: parsedId.data,
-    ip: await getClientIp(),
+    ip,
   });
 
   revalidatePath("/admin/messages");

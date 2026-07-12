@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Briefcase, FileText, MessageSquareText, Mail, LogOut } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, MessageSquareText, Mail, Settings, LogOut } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ const links = [
   { href: "/admin/applications", label: "الطلبات والسير الذاتية", icon: FileText },
   { href: "/admin/quotes", label: "طلبات عروض الأسعار", icon: MessageSquareText },
   { href: "/admin/messages", label: "رسائل التواصل", icon: Mail },
+  { href: "/admin/settings", label: "الإعدادات", icon: Settings },
 ];
 
 export function AdminSidebar() {

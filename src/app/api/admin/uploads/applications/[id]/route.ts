@@ -5,6 +5,7 @@ import { readResumeFile } from "@/lib/storage";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
+import { logger } from "@/lib/logger";
 
 // Authenticated-only, so the threat here isn't brute force — it's a
 // compromised/malicious session hammering downloads to run up storage
@@ -20,16 +21,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const session = await getValidAdminSession();
   const ip = await getClientIp();
   if (!session?.user) {
-    console.warn(`[auth] unauthorized resume download attempt from ip=${ip}`);
+    logger.warn({ ip }, "auth_unauthorized_resume_download_attempt");
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
   if (
-    !checkRateLimit(`download:${session.user.id}`, DOWNLOAD_LIMIT, DOWNLOAD_WINDOW_MS, {
+    !(await checkRateLimit(`download:${session.user.id}`, DOWNLOAD_LIMIT, DOWNLOAD_WINDOW_MS, {
       ip,
       source: "resume-download",
       scope: "ADMIN",
-    })
+    }))
   ) {
     return new NextResponse("Too many requests", { status: 429 });
   }
@@ -50,7 +51,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   try {
     buffer = await readResumeFile(application.resumeUrl);
   } catch (error) {
-    console.error(`[admin] resume file missing for application ${parsedId.data}`, error);
+    logger.error({ applicationId: parsedId.data, err: error }, "admin_resume_file_missing");
     return new NextResponse("Not found", { status: 404 });
   }
 
