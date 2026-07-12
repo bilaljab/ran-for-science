@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { getJobApplications, getJobTitlesForFilter } from "@/features/jobs/data/jobs.data";
-import { StatusBadge } from "@/components/admin/StatusBadge";
+import { StatusSelect } from "@/components/admin/StatusSelect";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { deleteApplication } from "@/features/jobs/actions/application-status.actions";
+import { deleteApplication, updateApplicationStatus } from "@/features/jobs/actions/application-status.actions";
 import {
   applicationStatusLabels,
-  applicationStatusTones,
+  applicationStatusOptions,
   applicationStatusValuesList,
 } from "@/features/jobs/constants/status-labels";
 
@@ -77,9 +77,11 @@ export default async function AdminApplicationsPage({
                 <td className="px-4 py-3 font-medium text-primary-900">{app.fullName}</td>
                 <td className="px-4 py-3 text-primary-900/70">{app.job.titleAr}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge
-                    label={applicationStatusLabels[app.status]}
-                    tone={applicationStatusTones[app.status]}
+                  <StatusSelect
+                    id={app.id}
+                    status={app.status}
+                    options={applicationStatusOptions}
+                    onChange={updateApplicationStatus}
                   />
                 </td>
                 <td className="px-4 py-3 text-primary-900/70">

@@ -18,12 +18,12 @@ const notesSchema = z.object({
   adminNotes: z.string().trim().max(5000).optional().or(z.literal("")),
 });
 
-export async function updateApplicationStatus(id: string, status: string) {
+export async function updateApplicationStatus(id: string, status: string): Promise<boolean> {
   const session = await requireAdmin();
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success || !Object.values(ApplicationStatus).includes(status as ApplicationStatus)) {
-    return;
+    return false;
   }
 
   await prisma.jobApplication.updateMany({
@@ -40,6 +40,7 @@ export async function updateApplicationStatus(id: string, status: string) {
   });
 
   revalidatePath("/admin/applications");
+  return true;
 }
 
 export async function updateApplicationNotes(

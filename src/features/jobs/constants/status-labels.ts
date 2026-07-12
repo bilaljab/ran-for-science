@@ -31,3 +31,8 @@ export const applicationStatusTones: Record<string, Tone> = {
 };
 
 export const applicationStatusValuesList = Object.values(ApplicationStatus);
+
+export const applicationStatusOptions = applicationStatusValuesList.map((value) => ({
+  value,
+  label: applicationStatusLabels[value],
+}));

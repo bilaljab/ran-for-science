@@ -8,12 +8,12 @@ import { logAdminAction } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/rate-limit";
 import { MessageStatus } from "@/generated/prisma/enums";
 
-export async function updateMessageStatus(id: string, status: string) {
+export async function updateMessageStatus(id: string, status: string): Promise<boolean> {
   const session = await requireAdmin();
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success || !Object.values(MessageStatus).includes(status as MessageStatus)) {
-    return;
+    return false;
   }
 
   await prisma.contactMessage.updateMany({
@@ -30,6 +30,7 @@ export async function updateMessageStatus(id: string, status: string) {
   });
 
   revalidatePath("/admin/messages");
+  return true;
 }
 
 export async function deleteMessage(id: string) {

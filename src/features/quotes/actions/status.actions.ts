@@ -8,12 +8,12 @@ import { logAdminAction } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/rate-limit";
 import { QuoteStatus } from "@/generated/prisma/enums";
 
-export async function updateQuoteStatus(id: string, status: string) {
+export async function updateQuoteStatus(id: string, status: string): Promise<boolean> {
   const session = await requireAdmin();
 
   const parsedId = idSchema.safeParse(id);
   if (!parsedId.success || !Object.values(QuoteStatus).includes(status as QuoteStatus)) {
-    return;
+    return false;
   }
 
   await prisma.serviceQuoteRequest.updateMany({
@@ -30,6 +30,7 @@ export async function updateQuoteStatus(id: string, status: string) {
   });
 
   revalidatePath("/admin/quotes");
+  return true;
 }
 
 export async function deleteQuote(id: string) {
