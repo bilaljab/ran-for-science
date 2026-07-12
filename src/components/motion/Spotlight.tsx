@@ -11,7 +11,7 @@
 // never independently decide to track the cursor when its parent has
 // decided not to (e.g. on a touch-only device).
 
-import { m, useSpring, useTransform, type MotionValue } from "framer-motion";
+import { m, useSpring, useMotionTemplate, type MotionValue } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 type SpotlightProps = {
@@ -26,8 +26,10 @@ type SpotlightProps = {
 export function Spotlight({ mouseX, mouseY, isHovered, canHover, size = 200, className }: SpotlightProps) {
   const smoothX = useSpring(mouseX, { bounce: 0 });
   const smoothY = useSpring(mouseY, { bounce: 0 });
-  const left = useTransform(smoothX, (x) => `${x - size / 2}px`);
-  const top = useTransform(smoothY, (y) => `${y - size / 2}px`);
+  // GPU-composited transform instead of animating left/top directly — the
+  // static negative offset below centers the spotlight on the tracked
+  // point, and only `transform` (not layout) changes per frame.
+  const transform = useMotionTemplate`translate3d(${smoothX}px, ${smoothY}px, 0)`;
 
   if (!canHover) return null;
 
@@ -39,7 +41,7 @@ export function Spotlight({ mouseX, mouseY, isHovered, canHover, size = 200, cla
         isHovered ? "opacity-70" : "opacity-0",
         className
       )}
-      style={{ width: size, height: size, left, top }}
+      style={{ width: size, height: size, left: -size / 2, top: -size / 2, transform }}
     />
   );
 }
