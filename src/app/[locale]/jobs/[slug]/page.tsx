@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getPublishedJobBySlug } from "@/features/jobs/data/jobs.data";
-import { MapPin } from "lucide-react";
+import { MapPin, Send } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { ApplyForm } from "@/features/jobs/components/ApplyForm";
 import { buildAlternates, buildOpenGraph, buildTwitter } from "@/lib/seo";
+import { Reveal } from "@/components/motion/Reveal";
+import { JobDetailAccent } from "@/components/illustrations/JobDetailAccent";
 
 const SITE_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
@@ -88,7 +90,7 @@ export default async function JobDetailPage({
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
+    <div>
       {/* Deliberately a raw <script>, not next/script — Next.js's own docs
           for JSON-LD are explicit: "next/script is optimized for loading and
           executing JavaScript. Since JSON-LD is structured data, not
@@ -107,37 +109,47 @@ export default async function JobDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {job.field && <Badge tone="mint">{job.field}</Badge>}
-        <Badge tone="primary">{t(`jobs.jobType.${job.jobType}`)}</Badge>
-      </div>
+      <section className="relative overflow-hidden bg-primary-50/50 px-4 py-12 sm:px-6">
+        <JobDetailAccent className="pointer-events-none absolute end-6 top-6 h-24 w-24 opacity-15" />
+        <Reveal className="relative mx-auto max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2">
+            {job.field && <Badge tone="mint">{job.field}</Badge>}
+            <Badge tone="primary">{t(`jobs.jobType.${job.jobType}`)}</Badge>
+          </div>
 
-      <h1 className="mt-4 text-3xl font-extrabold text-primary-800">{title}</h1>
+          <h1 className="mt-4 text-3xl font-extrabold text-primary-800">{title}</h1>
 
-      {job.location && (
-        <p className="mt-2 flex items-center gap-1.5 text-sm text-primary-900/60">
-          <MapPin className="h-4 w-4" />
-          {job.location}
-        </p>
-      )}
+          {job.location && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-primary-900/60">
+              <MapPin className="h-4 w-4" />
+              {job.location}
+            </p>
+          )}
+        </Reveal>
+      </section>
 
-      <div className="mt-8">
-        <h2 className="text-lg font-bold text-primary-700">{t("jobs.detail.description")}</h2>
-        <p className="mt-3 whitespace-pre-line leading-relaxed text-primary-900/80">{description}</p>
-      </div>
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        <Reveal delay={0.05}>
+          <h2 className="text-lg font-bold text-primary-700">{t("jobs.detail.description")}</h2>
+          <p className="mt-3 whitespace-pre-line leading-relaxed text-primary-900/80">{description}</p>
+        </Reveal>
 
-      {requirements && (
-        <div className="mt-8">
-          <h2 className="text-lg font-bold text-primary-700">{t("jobs.detail.requirements")}</h2>
-          <p className="mt-3 whitespace-pre-line leading-relaxed text-primary-900/80">{requirements}</p>
-        </div>
-      )}
+        {requirements && (
+          <Reveal delay={0.1} className="mt-8">
+            <h2 className="text-lg font-bold text-primary-700">{t("jobs.detail.requirements")}</h2>
+            <p className="mt-3 whitespace-pre-line leading-relaxed text-primary-900/80">{requirements}</p>
+          </Reveal>
+        )}
 
-      <div className="mt-12 rounded-xl border border-primary-100 bg-primary-50/40 p-6 sm:p-8">
-        <h2 className="text-xl font-bold text-primary-800">{t("jobs.detail.applyTitle")}</h2>
-        <div className="mt-6">
-          <ApplyForm jobId={job.id} />
-        </div>
+        <Reveal delay={0.15} className="mt-12 rounded-xl border border-primary-100 bg-primary-50/40 p-6 sm:p-8">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-primary-800">
+            <Send className="h-5 w-5 text-primary-500" aria-hidden="true" />
+            {t("jobs.detail.applyTitle")}
+          </h2>
+          <div className="mt-6">
+            <ApplyForm jobId={job.id} />
+          </div>
+        </Reveal>
       </div>
     </div>
   );

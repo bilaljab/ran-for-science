@@ -1,3 +1,4 @@
+import { Leaf, Building2, Scale, Laptop, type LucideIcon } from "lucide-react";
 import { ServiceCategory } from "@/generated/prisma/enums";
 
 export const serviceCategoryLabelKeys: Record<ServiceCategory, string> = {
@@ -64,3 +65,10 @@ export const categoryGroups = [
     ],
   },
 ] as const;
+
+export const categoryGroupIcons: Record<(typeof categoryGroups)[number]["key"], LucideIcon> = {
+  environmental: Leaf,
+  company: Building2,
+  legal: Scale,
+  digital: Laptop,
+};

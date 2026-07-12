@@ -9,6 +9,7 @@ import { buildOpenGraph, buildTwitter } from "@/lib/seo";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import FloatingWhatsAppButton from "@/components/layout/FloatingWhatsAppButton";
+import { MotionProvider } from "@/components/motion/MotionProvider";
 import "../globals.css";
 
 const SITE_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -114,10 +115,12 @@ export default async function LocaleLayout({
             real initial HTML where the browser's own parser processes it. */}
         <script type="speculationrules" dangerouslySetInnerHTML={{ __html: SPECULATION_RULES }} />
         <NextIntlClientProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <FloatingWhatsAppButton />
+          <MotionProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <FloatingWhatsAppButton />
+          </MotionProvider>
         </NextIntlClientProvider>
       </body>
     </html>

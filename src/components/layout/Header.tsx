@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { Link, usePathname } from "@/i18n/navigation";
 import { Menu, X } from "lucide-react";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
@@ -14,6 +15,7 @@ export default function Header() {
   const tc = useTranslations("common");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const links = [
     { href: "/", label: t("home") },
@@ -68,29 +70,40 @@ export default function Header() {
         </button>
       </div>
 
-      {open && (
-        <div className="border-t border-primary-100 bg-white px-4 py-4 md:hidden">
-          <nav className="flex flex-col gap-3">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "text-sm font-medium",
-                  pathname === link.href ? "text-primary-600" : "text-primary-900/80"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="mt-4 flex items-center justify-between">
-            <SocialLinks />
-            <LanguageSwitcher />
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <m.div
+            key="mobile-menu"
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? {} : { height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden border-t border-primary-100 bg-white md:hidden"
+          >
+            <div className="px-4 py-4">
+              <nav className="flex flex-col gap-3">
+                {links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "text-sm font-medium",
+                      pathname === link.href ? "text-primary-600" : "text-primary-900/80"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="mt-4 flex items-center justify-between">
+                <SocialLinks />
+                <LanguageSwitcher />
+              </div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
