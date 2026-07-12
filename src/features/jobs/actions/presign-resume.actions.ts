@@ -66,12 +66,12 @@ export async function presignResumeUpload(rawInput: unknown): Promise<PresignRes
   }
 
   if (
-    !checkRateLimit(`presign:${ip}`, PRESIGN_LIMIT, PRESIGN_WINDOW_MS, {
+    !(await checkRateLimit(`presign:${ip}`, PRESIGN_LIMIT, PRESIGN_WINDOW_MS, {
       ip,
       source: "apply-presign",
       scope: "PUBLIC",
       fingerprint: fp || undefined,
-    })
+    }))
   ) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }

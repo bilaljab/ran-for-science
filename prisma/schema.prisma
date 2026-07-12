@@ -137,6 +137,28 @@ model BlockedFingerprint {
   @@unique([fingerprint, scope])
 }
 
+// Shared, persistent backing store for every in-process counter that used
+// to live in a plain JS Map (src/lib/rate-limit.ts, login-attempts.ts,
+// ip-reputation.ts) — a security-audit finding confirmed those in-memory
+// Maps don't survive Vercel's serverless, multi-instance deployment model:
+// each concurrent instance had its own empty counter, so an attacker
+// spreading requests across instances could bypass rate limiting/lockout
+// almost entirely. One shared table (rather than three) since all three
+// modules need the identical shape (a count within a time window, plus an
+// optional "locked/blocked until" timestamp once a threshold is crossed);
+// `key` is namespaced by each module's own prefix convention (e.g.
+// `"login-email:..."`, `"ip-rep:..."`) so the three modules can never
+// collide with each other despite sharing one table.
+model AbuseCounter {
+  key         String    @id
+  count       Int       @default(1)
+  windowStart DateTime  @default(now())
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([lockedUntil])
+}
+
 model PasswordResetToken {
   id          String    @id @default(cuid())
   tokenHash   String    @unique

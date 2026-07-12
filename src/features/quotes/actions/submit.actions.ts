@@ -39,7 +39,7 @@ export async function submitQuoteRequest(
     return { success: true };
   }
 
-  if (!checkRateLimit(`quote:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "quote", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined })) {
+  if (!(await checkRateLimit(`quote:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "quote", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined }))) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 

@@ -1,10 +1,7 @@
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { recordSuspiciousFingerprint } from "@/lib/fingerprint";
+import { incrementCounter, getCounter, setLockedUntil, resetCounter } from "@/lib/abuse-counter";
 import type { FingerprintScope } from "@/generated/prisma/enums";
-
-type AttemptState = { failures: number; windowStart: number; lockedUntil: number };
-
-const attempts = new Map<string, AttemptState>();
 
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 
@@ -26,26 +23,6 @@ const LOCKOUT_STEPS: { afterFailures: number; lockMs: number }[] = [
   { afterFailures: 20, lockMs: 60 * 60 * 1000 },
 ];
 
-const MAX_ENTRIES = 50_000;
-let lastSweep = 0;
-const SWEEP_INTERVAL_MS = 60 * 1000;
-
-function sweep(now: number) {
-  if (now - lastSweep < SWEEP_INTERVAL_MS) return;
-  lastSweep = now;
-  for (const [key, state] of attempts) {
-    if (now > state.lockedUntil && now - state.windowStart > FAILURE_WINDOW_MS) attempts.delete(key);
-  }
-  if (attempts.size > MAX_ENTRIES) {
-    const excess = attempts.size - MAX_ENTRIES / 2;
-    let i = 0;
-    for (const key of attempts.keys()) {
-      if (i++ >= excess) break;
-      attempts.delete(key);
-    }
-  }
-}
-
 function currentLockMs(failures: number): number {
   let lock = 0;
   for (const step of LOCKOUT_STEPS) if (failures >= step.afterFailures) lock = step.lockMs;
@@ -61,10 +38,10 @@ function currentLockMs(failures: number): number {
  * from one source — neither pattern trips a same-key fixed-window limiter
  * on its own.
  */
-export function getLockoutRemainingMs(key: string): number {
-  const state = attempts.get(key);
-  if (!state) return 0;
-  const remaining = state.lockedUntil - Date.now();
+export async function getLockoutRemainingMs(key: string): Promise<number> {
+  const state = await getCounter(`login:${key}`);
+  if (!state?.lockedUntil) return 0;
+  const remaining = state.lockedUntil.getTime() - Date.now();
   return remaining > 0 ? remaining : 0;
 }
 
@@ -79,33 +56,25 @@ export function getLockoutRemainingMs(key: string): number {
  * the ADMIN/PUBLIC scope split exists to prevent. Forcing every call site to
  * pass it explicitly keeps that choice visible and reviewable.
  */
-export function recordLoginFailure(
+export async function recordLoginFailure(
   key: string,
   ip: string,
   label: string,
   scope: FingerprintScope,
   fingerprint?: string
-): void {
-  const now = Date.now();
-  sweep(now);
+): Promise<void> {
+  const { count: failures } = await incrementCounter(`login:${key}`, FAILURE_WINDOW_MS);
 
-  let state = attempts.get(key);
-  if (!state || now - state.windowStart > FAILURE_WINDOW_MS) {
-    state = { failures: 0, windowStart: now, lockedUntil: 0 };
-  }
-
-  state.failures += 1;
-  const lockMs = currentLockMs(state.failures);
+  const lockMs = currentLockMs(failures);
   if (lockMs > 0) {
-    state.lockedUntil = now + lockMs;
-    logAbuseEvent({ type: "login_lockout", ip, detail: `${label} failures=${state.failures} lockMs=${lockMs}` });
-    if (fingerprint && state.failures >= FINGERPRINT_ESCALATION_THRESHOLD) {
+    await setLockedUntil(`login:${key}`, new Date(Date.now() + lockMs));
+    logAbuseEvent({ type: "login_lockout", ip, detail: `${label} failures=${failures} lockMs=${lockMs}` });
+    if (fingerprint && failures >= FINGERPRINT_ESCALATION_THRESHOLD) {
       void recordSuspiciousFingerprint(fingerprint, scope, `login_lockout ${label}`);
     }
   }
-  attempts.set(key, state);
 }
 
-export function recordLoginSuccess(key: string): void {
-  attempts.delete(key);
+export async function recordLoginSuccess(key: string): Promise<void> {
+  await resetCounter(`login:${key}`);
 }
