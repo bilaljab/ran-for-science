@@ -115,16 +115,17 @@ const nextConfig: NextConfig = {
       // a large file anymore, so this stays small as defense-in-depth.
       bodySizeLimit: "1mb",
     },
-    // Adds `integrity` hashes to Next's own bundled framework/page script
-    // tags, so a tampered/substituted script fails browser verification —
-    // purely additive, works with static generation (unlike nonces), and
-    // doesn't touch the CSP script-src decision documented above (it
-    // hardens Next's own generated scripts; it doesn't help this project's
-    // two hand-written inline <script> tags, which is why 'unsafe-inline'
-    // is still needed for those specifically).
-    sri: {
-      algorithm: "sha256",
-    },
+    // Subresource Integrity on Next's own bundled scripts was tried here and
+    // REVERTED — it broke production entirely. Confirmed live via browser
+    // console: "Failed to find a valid digest in the 'integrity' attribute
+    // for resource '.../turbopack-*.js' ... The resource has been blocked."
+    // Next's own core bundle failed its own integrity check on Vercel,
+    // blocking script execution and leaving the whole site unhydrated
+    // (blank content, only server-rendered HTML visible). Root cause not
+    // fully diagnosed — likely Vercel's edge/CDN layer altering served
+    // bytes after the build computed the hash against the original
+    // artifact — but not worth re-attempting without a way to verify it
+    // against a real Vercel deployment first, not just a local build.
   },
 };
 
