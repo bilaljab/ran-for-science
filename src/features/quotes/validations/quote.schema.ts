@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ServiceCategory } from "@/generated/prisma/enums";
 
-export const serviceCategoryValues = Object.values(ServiceCategory) as [string, ...string[]];
+const serviceCategoryValues = Object.values(ServiceCategory) as [string, ...string[]];
 
 export const quoteRequestSchema = z.object({
   category: z.enum(serviceCategoryValues),
@@ -11,5 +11,3 @@ export const quoteRequestSchema = z.object({
   phone: z.string().trim().min(6).max(40),
   message: z.string().trim().min(10).max(4000),
 });
-
-export type QuoteRequestInput = z.infer<typeof quoteRequestSchema>;

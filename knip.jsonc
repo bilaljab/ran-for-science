@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "tags": [
+    "-lintignore"
+  ],
+  // NextAuth v5 (Auth.js) has no dedicated Knip plugin. `handlers`/`auth`/
+  // `signIn`/`signOut` exported from auth.ts are the framework's own public
+  // API surface (consumed by convention across route handlers, Server
+  // Actions, and require-admin.ts) — not every export is necessarily
+  // call-traced from a single obvious site, so auth.ts must be declared as
+  // an entry or Knip will flag legitimate exports (e.g. signIn/signOut) as
+  // "unused". auth.config.ts is only ever imported by auth.ts today, so it's
+  // already reachable via that import — listed explicitly anyway since it's
+  // the other half of the NextAuth setup and just as cheap to protect.
+  "entry": [
+    "src/auth.ts",
+    "src/auth.config.ts"
+  ],
+  // Admin dashboard is explicitly out of scope for this round of dead-code
+  // cleanup — current focus is the public site only (src/app/[locale]/**).
+  // Excludes both the page/layout tree and its dedicated API routes.
+  "ignore": [
+    "src/app/admin/**",
+    "src/app/api/admin/**"
+  ]
+}

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ACCEPTED_RESUME_TYPES = [
+const ACCEPTED_RESUME_TYPES = [
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -20,8 +20,6 @@ export const jobApplicationSchema = z.object({
   phone: z.string().trim().min(6).max(40),
   coverNote: z.string().trim().max(4000).optional().or(z.literal("")),
 });
-
-export type JobApplicationInput = z.infer<typeof jobApplicationSchema>;
 
 export const resumeFileSchema = z
   .instanceof(File)

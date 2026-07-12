@@ -8,7 +8,3 @@ import { z } from "zod";
 // database, instead of letting Prisma throw an uncaught error for a
 // not-found id.
 export const idSchema = z.string().trim().min(1).max(64).regex(/^[a-z0-9]+$/i, "Invalid id");
-
-export function isValidId(id: unknown): id is string {
-  return idSchema.safeParse(id).success;
-}

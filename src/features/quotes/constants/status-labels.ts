@@ -1,6 +1,6 @@
 import { QuoteStatus } from "@/generated/prisma/enums";
 
-export const quoteStatusLabels: Record<string, string> = {
+const quoteStatusLabels: Record<string, string> = {
   NEW: "جديد",
   IN_REVIEW: "قيد المراجعة",
   CONTACTED: "تم التواصل",

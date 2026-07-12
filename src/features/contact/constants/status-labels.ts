@@ -1,6 +1,6 @@
 import { MessageStatus } from "@/generated/prisma/enums";
 
-export const messageStatusLabels: Record<string, string> = {
+const messageStatusLabels: Record<string, string> = {
   NEW: "جديد",
   READ: "مقروء",
   RESPONDED: "تم الرد",

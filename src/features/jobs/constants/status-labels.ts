@@ -1,4 +1,4 @@
-import { JobStatus, ApplicationStatus } from "@/generated/prisma/enums";
+import { ApplicationStatus } from "@/generated/prisma/enums";
 
 type Tone = "primary" | "mint" | "mauve" | "neutral";
 
@@ -30,5 +30,4 @@ export const applicationStatusTones: Record<string, Tone> = {
   HIRED: "mint",
 };
 
-export const jobStatusValuesList = Object.values(JobStatus);
 export const applicationStatusValuesList = Object.values(ApplicationStatus);

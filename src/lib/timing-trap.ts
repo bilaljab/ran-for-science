@@ -4,7 +4,7 @@
 // realistic human fill time entirely, not to be a strict human/bot boundary
 // on its own — it works alongside the honeypot, CAPTCHA, and rate limiter,
 // not instead of them.
-export const MIN_HUMAN_SUBMIT_MS = 600;
+const MIN_HUMAN_SUBMIT_MS = 600;
 
 /**
  * A missing or malformed timestamp is treated the same as "too fast": these

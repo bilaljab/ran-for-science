@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { JobType, JobStatus } from "@/generated/prisma/enums";
 
-export const jobTypeValues = Object.values(JobType) as [string, ...string[]];
-export const jobStatusValues = Object.values(JobStatus) as [string, ...string[]];
+const jobTypeValues = Object.values(JobType) as [string, ...string[]];
+const jobStatusValues = Object.values(JobStatus) as [string, ...string[]];
 
 export const jobPostingSchema = z.object({
   slug: z
@@ -22,5 +22,3 @@ export const jobPostingSchema = z.object({
   jobType: z.enum(jobTypeValues),
   status: z.enum(jobStatusValues),
 });
-
-export type JobPostingInput = z.infer<typeof jobPostingSchema>;
