@@ -1,39 +1,69 @@
 @AGENTS.md
 @README.md
 
-## Commands
+## 1. Project Overview
+
+- Bilingual (Arabic default `/`, English `/en`) corporate site + admin dashboard for RAN For Science
+- Connects job seekers with companies in scientific/environmental/industrial/health fields; also sells paid consulting/compliance services
+- Public marketing site (`src/app/[locale]/**`) is fully bilingual; admin dashboard (`src/app/admin/**`) is Arabic-only, not locale-prefixed
+- No automated test suite — verification is `tsc --noEmit` + `eslint .` + `npm run build` + manual smoke test
+
+## 2. Tech Stack
+
+- Next.js 16.2.9 (App Router) · React 19.2.4 / react-dom 19.2.4 · TypeScript 5.9.3 (strict)
+- Tailwind CSS v4 (`^4`) · next-intl 4.13.1 · framer-motion 12.42.2 · zod 4.4.3
+- Prisma 7.8.0 + `@prisma/client` 7.8.0 + `@prisma/adapter-pg` 7.8.0 · PostgreSQL
+- next-auth (Auth.js) `5.0.0-beta.31` · Sentry (`@sentry/nextjs` 10.65.0) · pino 10.3.1
+- Resend 6.16.0 (email) · AWS SDK S3 client (Cloudflare R2 storage) · Cloudflare Turnstile
+
+⚠️ **Next 16, Tailwind v4, Auth.js v5, and Prisma 7 all differ meaningfully from older versions a model might assume from training data** (e.g. middleware is renamed "Proxy", Tailwind has no JS config file, Prisma's generator is `"prisma-client"` not `"prisma-client-js"`) — see `AGENTS.md` and check `node_modules/next/dist/docs/` before assuming an API.
+
+## 3. Commands
 
 - `npm run dev` — start dev server (Turbopack)
-- `npm run build` — production build (also type-checks via `next build`)
+- `npm run build` — `prisma migrate deploy && next build` (applies pending migrations, then builds)
+- `npm run start` — run a production build locally
+- `npm run lint` — ESLint
 - `npx tsc --noEmit` — type-check only
-- `npx eslint .` — lint
-- `npx prisma migrate dev` — apply/create a migration locally
-- `npx prisma db seed` — seed local dev DB only (hard-blocked when `NODE_ENV=production`)
+- `npm run knip` — dead-code/unused-export detection
+- `npx prisma migrate dev` — create/apply a migration **locally only**
+- `npx prisma db seed` — seed local dev DB (hard-blocked when `NODE_ENV=production`)
 
-No automated test suite exists. Verify changes with `tsc --noEmit` + `eslint .` + `npm run build`, then a manual smoke test against the running dev server. Playwright is not an installed dependency — if a task genuinely needs it, install it, run the check, and uninstall it again afterward rather than leaving it in `package.json`.
+## 4. Architecture at a Glance
 
-## Architecture conventions
+- `src/app/[locale]/` — public bilingual pages (home, about, services, jobs, contact)
+- `src/app/admin/` — admin dashboard (Arabic-only, not locale-prefixed)
+- `src/app/api/` — route handlers: admin resume uploads, NextAuth, dev-only resume stub, health check
+- `src/features/{contact,jobs,quotes}/` — one folder per public feature (`actions/`, `components/`, `data/`, `validations/`, `constants/`)
+- `src/lib/` — shared infra: Prisma client, rate-limit/login-attempts/ip-reputation/abuse-counter, storage, email, captcha, fingerprint, logger, require-admin
+- `src/components/` — shared UI (`ui/`, `layout/`, `motion/`, `illustrations/`, `admin/`, `home/`, `about/`, `services/`)
+- `src/auth.ts` / `src/auth.config.ts` — NextAuth v5 config, split for edge-runtime compatibility
+- `src/proxy.ts` — Next 16's renamed middleware (locale routing + admin cookie gate)
+- `src/messages/{ar,en}.json` — static editorial copy
+- `prisma/schema.prisma` — data model; client generates to `src/generated/prisma` (gitignored)
 
-- Path alias `@/*` → `src/*`.
-- Feature-based folders under `src/features/<feature>/` (`actions/`, `components/`, `constants/`, `data/`, `validations/`) for the public-facing features (contact, jobs, quotes). Cross-cutting/shared code lives in `src/lib/` and `src/components/`.
-- Server Actions return a shared `ActionState` shape (`src/lib/actions/types.ts`) consumed via `useActionState`; validation is Zod schemas under each feature's `validations/`.
-- Prisma client is generated to `src/generated/prisma` (not `node_modules`), gitignored — run `npx prisma generate` (or any `migrate`/`db` command, which runs it automatically) after pulling schema changes before TypeScript will resolve it.
-- Admin routes (`src/app/admin/**`) are intentionally **not** locale-prefixed (Arabic-only UI); public routes (`src/app/[locale]/**`) are bilingual via `next-intl` (`ar` default/unprefixed, `en` at `/en`, `localePrefix: "as-needed"`).
-- Admin auth check: use `getValidAdminSession()` / `requireAdmin()` from `src/lib/require-admin.ts` (DB-verified) — never `auth()` from `src/auth.ts` directly in admin routes/API handlers; that was a real bypass bug fixed earlier in this project.
+## 5. Conventions
 
-## Security/anti-abuse conventions (don't accidentally weaken these)
+- Path alias `@/*` → `src/*`
+- Server Actions return a shared `ActionState` shape (`src/lib/actions/types.ts`), consumed via `useActionState`; validation is Zod schemas under each feature's `validations/`
+- Admin routes/actions use `getValidAdminSession()` / `requireAdmin()` from `src/lib/require-admin.ts` — never raw `auth()` (a previously-fixed session-bypass bug)
+- Public forms (contact, quote, apply) each carry: a honeypot field (`website`), a timing-trap field (`formRenderedAt`), a fingerprint pair (`fp`/`fpBot`), and Cloudflare Turnstile
+- One-time-token flows (password reset, email verification) claim atomically via `updateMany({ where: { usedAt: null } })` before any slow operation (bcrypt) — avoids a TOCTOU race
+- Structured logging goes through `src/lib/logger.ts` (pino → stdout JSON), not raw `console.*`
+- CSP/security headers are centralized in `next.config.ts` — not middleware or a meta tag
+- Rate limiting/lockout state is persisted in Postgres (`AbuseCounter` table) — not in-memory — because Vercel's serverless model runs multiple instances with no shared memory
 
-- Public forms (contact, quote request, job application) each carry: a honeypot field named `website` (deliberately generic, not `honeypot`), a `formRenderedAt` timing-trap field (`FormTimingGuard` component — must stay effect-based, not a lazy `useState` initializer, or SSR hydration keeps a stale timestamp), an `fp`/`fpBot` browser-fingerprint pair (`BrowserFingerprint` component), and Cloudflare Turnstile. Any new public form should follow the same pattern.
-- `document.prerendering`/`prerenderingchange` gating in `FormTimingGuard` exists specifically so the Speculation Rules prerendering in `src/app/[locale]/layout.tsx` can't be used to start the timing-trap clock early — keep both changes in sync if either is touched.
-- CSP/security headers live in `next.config.ts`, not in a middleware or meta tag — add new third-party origins there.
-- Resume storage: local disk in dev, Cloudflare R2 in production, switched automatically based on whether `R2_*` env vars are set (`src/lib/storage.ts`). Don't assume either backend — check `storage.ts`.
-- Token flows (password reset, email verification) use an atomic `updateMany({ where: { usedAt: null, ... }, data: { usedAt: now } })` claim *before* any slow operation (bcrypt hashing), not a `findUnique`-then-check — this avoids a TOCTOU race that was previously exploitable. Follow the same pattern for any new one-time-token flow.
+## 6. Never Do
 
-## Environment
+- Never commit `.env`, or print/paste secret values (DB URLs, API keys, `AUTH_SECRET`) into files, commits, or logs
+- Never run `npx prisma db seed` against production
+- Never run `npx prisma migrate dev` against production — production migrations apply automatically via `prisma migrate deploy` inside `npm run build`
+- Never use raw `auth()` in admin routes/API handlers — always `getValidAdminSession()`/`requireAdmin()`
+- Never `git push` or trigger a deployment without explicit user confirmation first
 
-See `.env.example` for the full list. `NEXTAUTH_URL` doubles as the canonical base URL used to build absolute links in emails — keep it correct per environment, not just for NextAuth's own use.
+## 7. Known Gotchas
 
-## Windows dev environment notes
-
-- Git Bash's `/tmp` is invisible to natively-installed Windows Python — write scratch files a script needs to read into the project directory (or the actual OS scratchpad dir) instead.
-- `git config core.autocrlf=true` (common Windows default) will corrupt checksum verification of freshly cloned repos (LF→CRLF rewrite on checkout). Re-clone with `-c core.autocrlf=false` when verifying file hashes.
+- Prisma's generator is `provider = "prisma-client"` (not the classic `"prisma-client-js"`) and outputs to `src/generated/prisma`, not `node_modules/.prisma` — run `npx prisma generate` after pulling schema changes, or TypeScript won't resolve it
+- `AUTH_SECRET` rotation invalidates every existing admin session immediately, no grace period
+- Git Bash's `/tmp` is invisible to natively-installed Windows tools — write scratch files into the project dir or OS scratchpad instead
+- `core.autocrlf=true` (a common Windows git default) corrupts checksum verification on fresh clones (LF→CRLF rewrite on checkout) — reclone with `-c core.autocrlf=false` when verifying file hashes
