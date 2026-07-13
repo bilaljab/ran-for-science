@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { JobType, ApplicationStatus } from "@/generated/prisma/enums";
 import { idSchema } from "@/lib/validation";
@@ -30,37 +31,49 @@ const jobCardSelect = {
   jobType: true,
 } as const;
 
-export function getPublishedJobs({
-  field,
-  jobType,
-  take,
-}: { field?: string; jobType?: string; take?: number } = {}) {
-  const jobTypeValues = Object.values(JobType) as string[];
-  const safeField = sanitizeFilter(field);
+// /jobs is forced-dynamic (it reads searchParams), so unlike the rest of the
+// public site it can't fall back on static rendering — these two queries ran
+// against Postgres on every single request with no cache, which measured at
+// ~2.3-2.5s TTFB in production. Cached here via Next's Data Cache; invalidated
+// immediately on admin mutation via revalidateTag(PUBLIC_JOBS_TAG) (see
+// admin.actions.ts), with `revalidate` below only as a safety net.
+export const PUBLIC_JOBS_TAG = "public-jobs";
 
-  const where: Prisma.JobPostingWhereInput = {
-    status: "PUBLISHED",
-    ...(safeField ? { field: safeField } : {}),
-    ...(jobType && jobTypeValues.includes(jobType)
-      ? { jobType: jobType as (typeof JobType)[keyof typeof JobType] }
-      : {}),
-  };
+export const getPublishedJobs = unstable_cache(
+  async ({ field, jobType, take }: { field?: string; jobType?: string; take?: number } = {}) => {
+    const jobTypeValues = Object.values(JobType) as string[];
+    const safeField = sanitizeFilter(field);
 
-  return prisma.jobPosting.findMany({
-    where,
-    orderBy: { publishedAt: "desc" },
-    select: jobCardSelect,
-    ...(take ? { take } : {}),
-  });
-}
+    const where: Prisma.JobPostingWhereInput = {
+      status: "PUBLISHED",
+      ...(safeField ? { field: safeField } : {}),
+      ...(jobType && jobTypeValues.includes(jobType)
+        ? { jobType: jobType as (typeof JobType)[keyof typeof JobType] }
+        : {}),
+    };
 
-export function getPublishedJobFields() {
-  return prisma.jobPosting.findMany({
-    where: { status: "PUBLISHED", field: { not: null } },
-    select: { field: true },
-    distinct: ["field"],
-  });
-}
+    return prisma.jobPosting.findMany({
+      where,
+      orderBy: { publishedAt: "desc" },
+      select: jobCardSelect,
+      ...(take ? { take } : {}),
+    });
+  },
+  ["public-jobs-list"],
+  { tags: [PUBLIC_JOBS_TAG], revalidate: 300 }
+);
+
+export const getPublishedJobFields = unstable_cache(
+  async () => {
+    return prisma.jobPosting.findMany({
+      where: { status: "PUBLISHED", field: { not: null } },
+      select: { field: true },
+      distinct: ["field"],
+    });
+  },
+  ["public-jobs-fields"],
+  { tags: [PUBLIC_JOBS_TAG], revalidate: 300 }
+);
 
 // cache() deduplicates calls within a single request — generateMetadata and
 // the page component both call this with the same slug, so without cache()

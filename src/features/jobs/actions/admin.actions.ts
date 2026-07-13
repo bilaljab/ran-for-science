@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { jobPostingSchema } from "@/features/jobs/validations/job.schema";
+import { PUBLIC_JOBS_TAG } from "@/features/jobs/data/jobs.data";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -80,6 +81,7 @@ export async function createJob(_prevState: ActionState, formData: FormData): Pr
   });
 
   revalidatePath("/admin/jobs");
+  updateTag(PUBLIC_JOBS_TAG);
   redirect("/admin/jobs");
 }
 
@@ -142,6 +144,7 @@ export async function updateJob(
   });
 
   revalidatePath("/admin/jobs");
+  updateTag(PUBLIC_JOBS_TAG);
   redirect("/admin/jobs");
 }
 
@@ -173,4 +176,5 @@ export async function deleteJob(id: string) {
   });
 
   revalidatePath("/admin/jobs");
+  updateTag(PUBLIC_JOBS_TAG);
 }

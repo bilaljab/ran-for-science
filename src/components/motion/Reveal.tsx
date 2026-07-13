@@ -4,8 +4,12 @@
 // sourced via 21st.dev (https://21st.dev/@dillionverma/components/blur-fade).
 // Modifications: swapped `motion`/imperative useInView+AnimatePresence for
 // the `m` component (LazyMotion, see MotionProvider.tsx) driven by
-// `whileInView`, and added `useReducedMotion()` gating — the upstream
-// component has neither.
+// `whileInView`, added `useReducedMotion()` gating, and dropped the
+// upstream's `filter: blur()` entirely — framer-motion renders the "hidden"
+// variant into the server-rendered HTML, so the blur was visible on every
+// page load for as long as hydration took (measured ~2.9s in this project,
+// see Hero.tsx), not just for the animation's own duration. Same class of
+// bug StaggerGrid.tsx already avoids by never animating opacity.
 
 import { m, useReducedMotion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";
@@ -16,29 +20,18 @@ type RevealProps = {
   duration?: number;
   delay?: number;
   yOffset?: number;
-  blur?: string;
 };
 
-export function Reveal({
-  children,
-  className,
-  duration = 0.4,
-  delay = 0,
-  yOffset = 6,
-  blur = "6px",
-}: RevealProps) {
+export function Reveal({ children, className, duration = 0.4, delay = 0, yOffset = 6 }: RevealProps) {
   const prefersReducedMotion = useReducedMotion();
 
   if (prefersReducedMotion) {
     return <div className={className}>{children}</div>;
   }
 
-  // No opacity in hidden state — opacity:0 delays LCP because Chrome waits
-  // for the element to be visible before recording the paint time. Transform
-  // and filter animations don't affect LCP, so we animate only those.
   const variants: Variants = {
-    hidden: { y: yOffset, filter: `blur(${blur})` },
-    visible: { y: 0, filter: "blur(0px)" },
+    hidden: { y: yOffset },
+    visible: { y: 0 },
   };
 
   return (
