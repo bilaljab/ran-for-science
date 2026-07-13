@@ -22,14 +22,6 @@ export const applicationStatusLabels: Record<string, string> = {
   HIRED: "تم التوظيف",
 };
 
-export const applicationStatusTones: Record<string, Tone> = {
-  PENDING: "neutral",
-  SHORTLISTED: "primary",
-  INTERVIEW: "mauve",
-  REJECTED: "neutral",
-  HIRED: "mint",
-};
-
 export const applicationStatusValuesList = Object.values(ApplicationStatus);
 
 export const applicationStatusOptions = applicationStatusValuesList.map((value) => ({

@@ -16,11 +16,4 @@
     "src/auth.ts",
     "src/auth.config.ts"
   ],
-  // Admin dashboard is explicitly out of scope for this round of dead-code
-  // cleanup — current focus is the public site only (src/app/[locale]/**).
-  // Excludes both the page/layout tree and its dedicated API routes.
-  "ignore": [
-    "src/app/admin/**",
-    "src/app/api/admin/**"
-  ]
 }

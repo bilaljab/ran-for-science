@@ -16,23 +16,11 @@ export const jobApplicationSchema = z.object({
   coverNote: z.string().trim().max(4000).optional().or(z.literal("")),
 });
 
-export const resumeFileSchema = z
-  .instanceof(File)
-  .refine((file) => file.size > 0 && file.size <= MAX_RESUME_SIZE_BYTES, {
-    message: "File must be between 1 byte and 5MB",
-  })
-  .refine((file) => (ACCEPTED_RESUME_TYPES as readonly string[]).includes(file.type), {
-    message: "Only PDF and Word documents are accepted",
-  })
-  .refine((file) => file.name.length > 0 && file.name.length <= 255, {
-    message: "File name is too long",
-  });
-
 // Input to the presign action: gauntlet fields (same shape as the other
 // public actions) plus file metadata only — no raw File, since the browser
 // hasn't uploaded anything yet at this point. This is the real server-side
-// trust boundary for these fields; the client's resumeFileSchema check above
-// is just a fast pre-check to avoid a round-trip for an obviously-bad file.
+// trust boundary for these fields; the client pre-validates in ApplyForm
+// before calling this action.
 export const presignResumeInputSchema = z.object({
   jobId: z
     .string()
