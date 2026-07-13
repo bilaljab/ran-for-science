@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { JobType, ApplicationStatus } from "@/generated/prisma/enums";
 import { idSchema } from "@/lib/validation";
@@ -61,9 +62,12 @@ export function getPublishedJobFields() {
   });
 }
 
-export function getPublishedJobBySlug(slug: string) {
-  return prisma.jobPosting.findFirst({ where: { slug, status: "PUBLISHED" } });
-}
+// cache() deduplicates calls within a single request — generateMetadata and
+// the page component both call this with the same slug, so without cache()
+// that would be two separate DB round-trips per page load.
+export const getPublishedJobBySlug = cache((slug: string) =>
+  prisma.jobPosting.findFirst({ where: { slug, status: "PUBLISHED" } })
+);
 
 export function getAdminJobs() {
   return prisma.jobPosting.findMany({

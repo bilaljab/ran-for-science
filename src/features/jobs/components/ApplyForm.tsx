@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, startTransition } from "re
 import { useTranslations } from "next-intl";
 import { submitJobApplication } from "@/features/jobs/actions/apply.actions";
 import { presignResumeUpload } from "@/features/jobs/actions/presign-resume.actions";
-import { resumeFileSchema } from "@/features/jobs/validations/application.schema";
+import { MAX_RESUME_SIZE_BYTES, ACCEPTED_RESUME_TYPES } from "@/features/jobs/validations/application.constants";
 import { initialActionState } from "@/lib/actions/types";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
@@ -57,14 +57,28 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     const fileInput = form.elements.namedItem("resume") as HTMLInputElement | null;
     const file = fileInput?.files?.[0];
 
-    // Fast, no-network pre-check reusing the same schema the server trusts.
-    const fileCheck = resumeFileSchema.safeParse(file);
-    if (!fileCheck.success) {
-      setResumeError(fileCheck.error.issues[0]?.message ?? t("jobs.applyForm.errors.invalidFile"));
+    // Fast, no-network pre-check — same rules as the server-side Zod schema.
+    if (!file) {
+      setResumeError(t("jobs.applyForm.errors.invalidFile"));
       isSubmittingRef.current = false;
       return;
     }
-    const validFile = fileCheck.data;
+    if (file.size === 0 || file.size > MAX_RESUME_SIZE_BYTES) {
+      setResumeError("File must be between 1 byte and 5MB");
+      isSubmittingRef.current = false;
+      return;
+    }
+    if (!(ACCEPTED_RESUME_TYPES as readonly string[]).includes(file.type)) {
+      setResumeError("Only PDF and Word documents are accepted");
+      isSubmittingRef.current = false;
+      return;
+    }
+    if (file.name.length === 0 || file.name.length > 255) {
+      setResumeError("File name is too long");
+      isSubmittingRef.current = false;
+      return;
+    }
+    const validFile = file;
 
     const snapshot = new FormData(form);
 

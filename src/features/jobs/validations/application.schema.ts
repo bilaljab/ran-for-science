@@ -1,12 +1,7 @@
 import { z } from "zod";
+import { ACCEPTED_RESUME_TYPES, MAX_RESUME_SIZE_BYTES } from "./application.constants";
 
-const ACCEPTED_RESUME_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
-
-export const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
+export { MAX_RESUME_SIZE_BYTES };
 
 export const jobApplicationSchema = z.object({
   jobId: z
@@ -26,7 +21,7 @@ export const resumeFileSchema = z
   .refine((file) => file.size > 0 && file.size <= MAX_RESUME_SIZE_BYTES, {
     message: "File must be between 1 byte and 5MB",
   })
-  .refine((file) => ACCEPTED_RESUME_TYPES.includes(file.type), {
+  .refine((file) => (ACCEPTED_RESUME_TYPES as readonly string[]).includes(file.type), {
     message: "Only PDF and Word documents are accepted",
   })
   .refine((file) => file.name.length > 0 && file.name.length <= 255, {
@@ -54,7 +49,7 @@ export const presignResumeInputSchema = z.object({
   fpBot: z.string().optional().default(""),
   fileName: z.string().trim().min(1).max(255),
   fileSize: z.number().int().positive().max(MAX_RESUME_SIZE_BYTES),
-  mimeType: z.string().refine((v) => ACCEPTED_RESUME_TYPES.includes(v), "Unsupported file type"),
+  mimeType: z.string().refine((v) => (ACCEPTED_RESUME_TYPES as readonly string[]).includes(v), "Unsupported file type"),
 });
 
 // The server generates keys as randomUUID + one of three known extensions.
