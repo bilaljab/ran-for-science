@@ -26,7 +26,7 @@ export default async function AdminDashboardPage() {
         {cards.map((card) => (
           <Link key={card.href} href={card.href}>
             <Card className="transition-shadow hover:shadow-md">
-              <p className="text-sm text-primary-900/60">{card.label}</p>
+              <p className="text-sm text-primary-900/70">{card.label}</p>
               <p className="mt-3 text-3xl font-extrabold text-primary-700">{card.value}</p>
             </Card>
           </Link>

@@ -18,7 +18,7 @@ export default async function ApplicationDetailPage({
   return (
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold text-primary-800">{application.fullName}</h1>
-      <p className="mt-1 text-sm text-primary-900/60">تقدّم لوظيفة: {application.job.titleAr}</p>
+      <p className="mt-1 text-sm text-primary-900/70">تقدّم لوظيفة: {application.job.titleAr}</p>
 
       <Card className="mt-6">
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">

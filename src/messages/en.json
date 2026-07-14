@@ -158,6 +158,7 @@
   "jobs": {
     "title": "Jobs",
     "subtitle": "Browse the latest job opportunities in the scientific, environmental, industrial, and health fields.",
+    "resultsHeading": "Available jobs",
     "noResults": "No jobs match your search at the moment.",
     "filters": {
       "field": "Field",

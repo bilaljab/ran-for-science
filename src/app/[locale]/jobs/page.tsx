@@ -66,7 +66,12 @@ export default async function JobsPage({
 
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <form className="flex flex-wrap gap-4" method="get">
-          <Select name="field" defaultValue={field ?? ""} className="w-auto">
+          <Select
+            name="field"
+            defaultValue={field ?? ""}
+            className="w-auto"
+            aria-label={t("jobs.filters.field")}
+          >
             <option value="">{t("jobs.filters.allFields")}</option>
             {fields.map((f) => (
               <option key={f.field} value={f.field ?? ""}>
@@ -75,7 +80,12 @@ export default async function JobsPage({
             ))}
           </Select>
 
-          <Select name="jobType" defaultValue={jobType ?? ""} className="w-auto">
+          <Select
+            name="jobType"
+            defaultValue={jobType ?? ""}
+            className="w-auto"
+            aria-label={t("jobs.filters.jobType")}
+          >
             <option value="">{t("jobs.filters.allTypes")}</option>
             {jobTypeValues.map((type) => (
               <option key={type} value={type}>
@@ -92,9 +102,11 @@ export default async function JobsPage({
           </button>
         </form>
 
+        <h2 className="sr-only">{t("jobs.resultsHeading")}</h2>
+
         {jobs.length === 0 ? (
           <Reveal>
-            <p className="mt-12 text-center text-primary-900/60">{t("jobs.noResults")}</p>
+            <p className="mt-12 text-center text-primary-900/70">{t("jobs.noResults")}</p>
           </Reveal>
         ) : (
           <StaggerGrid className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

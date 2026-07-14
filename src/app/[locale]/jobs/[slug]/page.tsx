@@ -120,7 +120,7 @@ export default async function JobDetailPage({
           <h1 className="mt-4 text-3xl font-extrabold text-primary-800">{title}</h1>
 
           {job.location && (
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-primary-900/60">
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-primary-900/70">
               <MapPin className="h-4 w-4" />
               {job.location}
             </p>

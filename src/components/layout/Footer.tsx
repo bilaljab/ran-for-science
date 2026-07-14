@@ -59,7 +59,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-primary-100 py-5 text-center text-xs text-primary-900/60">
+      <div className="border-t border-primary-100 py-5 text-center text-xs text-primary-900/70">
         © {new Date().getFullYear()} {tc("siteName")} — {t("rights")}
       </div>
     </footer>

@@ -31,7 +31,7 @@ export function JobCard({ job }: { job: JobCardData }) {
         </div>
         <h3 className="mt-4 text-lg font-bold text-primary-800">{title}</h3>
         {job.location && (
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-primary-900/60">
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-primary-900/70">
             <MapPin className="h-4 w-4" />
             {job.location}
           </p>

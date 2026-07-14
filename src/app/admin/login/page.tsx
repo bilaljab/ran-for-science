@@ -8,7 +8,7 @@ export default function AdminLoginPage() {
         <h1 className="text-center text-xl font-bold text-primary-800">
           تسجيل الدخول للوحة التحكم
         </h1>
-        <p className="mt-1 text-center text-sm text-primary-900/60">RAN For Science</p>
+        <p className="mt-1 text-center text-sm text-primary-900/70">RAN For Science</p>
         <div className="mt-8">
           <LoginForm />
         </div>
