@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, startTransition } from "react";
 import { useTranslations } from "next-intl";
+import * as Sentry from "@sentry/nextjs";
 import { submitJobApplication } from "@/features/jobs/actions/apply.actions";
 import { presignResumeUpload } from "@/features/jobs/actions/presign-resume.actions";
 import { MAX_RESUME_SIZE_BYTES, ACCEPTED_RESUME_TYPES } from "@/features/jobs/validations/application.constants";
@@ -105,7 +106,25 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     try {
       const uploadRes = await fetch(presignResult.uploadUrl, { method: "PUT", body: validFile });
       if (!uploadRes.ok) throw new Error(`upload failed: ${uploadRes.status}`);
-    } catch {
+    } catch (error) {
+      // The blanket catch below shows one generic message for every possible
+      // cause (real network drop, CORS rejection, expired/invalid presigned
+      // URL, non-2xx R2 response) — capture the real error so a recurrence
+      // is diagnosable instead of another unexplained report. Only the
+      // upload host is logged, never the full presigned URL (it's a live,
+      // temporarily-valid write credential for the duration of its expiry).
+      Sentry.captureException(error, {
+        extra: {
+          context: "resume-upload-put",
+          uploadHost: (() => {
+            try {
+              return new URL(presignResult.uploadUrl).host;
+            } catch {
+              return "unparsable";
+            }
+          })(),
+        },
+      });
       setPhase("idle");
       setClientError(t("jobs.applyForm.errors.uploadFailed"));
       isSubmittingRef.current = false;
