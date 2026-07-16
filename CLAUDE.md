@@ -67,3 +67,4 @@
 - `AUTH_SECRET` rotation invalidates every existing admin session immediately, no grace period
 - Git Bash's `/tmp` is invisible to natively-installed Windows tools — write scratch files into the project dir or OS scratchpad instead
 - `core.autocrlf=true` (a common Windows git default) corrupts checksum verification on fresh clones (LF→CRLF rewrite on checkout) — reclone with `-c core.autocrlf=false` when verifying file hashes
+- R2 bucket CORS is a Cloudflare-dashboard setting, not code — resumes upload directly browser→R2, so `AllowedOrigins` must list every live domain (custom domain included). A mismatch fails silently client-side with no server log; if a domain changes, CORS needs a manual update too
