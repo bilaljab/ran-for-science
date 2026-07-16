@@ -92,7 +92,7 @@ Visit [http://localhost:3000](http://localhost:3000) for the public site and [ht
 | `AUTH_SECRET` | **Required** | Session encryption secret — generate with `npx auth secret` |
 | `SEED_ADMIN_EMAIL` | Required (seed script only) | Admin email used when seeding the local database |
 | `SEED_ADMIN_PASSWORD` | Required (seed script only) | Admin password used when seeding the local database (12+ chars) |
-| `R2_BUCKET` | Optional (dev) / **Required (production)** | Cloudflare R2 bucket name for file storage |
+| `R2_BUCKET` | Optional (dev) / **Required (production)** | Cloudflare R2 bucket name for file storage — in production, the bucket's CORS policy must also allow the site's origin, since resumes upload directly from the browser to R2 |
 | `R2_ACCOUNT_ID` | Optional (dev) / **Required (production)** | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | Optional (dev) / **Required (production)** | Cloudflare R2 access key |
 | `R2_SECRET_ACCESS_KEY` | Optional (dev) / **Required (production)** | Cloudflare R2 secret key |
