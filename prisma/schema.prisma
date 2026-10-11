@@ -71,12 +71,12 @@ enum MessageStatus {
 }
 
 model AdminUser {
-  id                String   @id @default(cuid())
-  email             String   @unique
+  id                String    @id @default(cuid())
+  email             String    @unique
   passwordHash      String
   name              String
   emailVerified     DateTime?
-  passwordChangedAt DateTime @default(now())
+  passwordChangedAt DateTime  @default(now())
   // Fast, explicit "log out everywhere" primitive, separate from
   // passwordChangedAt — see revokeAllSessions() in
   // lib/actions/admin-session.actions.ts. Both fields independently
@@ -84,11 +84,11 @@ model AdminUser {
   // isSessionStale()); passwordChangedAt keeps its own audit/metadata role,
   // this is the general-purpose "invalidate everything" counter that a
   // password change also bumps as a side effect.
-  sessionVersion    Int      @default(0)
+  sessionVersion    Int       @default(0)
   twoFactorSecret   String?
-  twoFactorEnabled  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  twoFactorEnabled  Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
@@ -192,30 +192,30 @@ model EmailVerificationToken {
 }
 
 model JobPosting {
-  id              String           @id @default(cuid())
-  slug            String           @unique
-  titleAr         String
-  titleEn         String
-  descriptionAr   String
-  descriptionEn   String
-  requirementsAr  String?
-  requirementsEn  String?
-  field           String?
-  location        String?
-  jobType         JobType          @default(FULL_TIME)
-  status          JobStatus        @default(DRAFT)
-  publishedAt     DateTime?
-  closesAt        DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  applications    JobApplication[]
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  titleAr        String
+  titleEn        String
+  descriptionAr  String
+  descriptionEn  String
+  requirementsAr String?
+  requirementsEn String?
+  field          String?
+  location       String?
+  jobType        JobType          @default(FULL_TIME)
+  status         JobStatus        @default(DRAFT)
+  publishedAt    DateTime?
+  closesAt       DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  applications   JobApplication[]
 
   @@index([status, publishedAt])
 }
 
 model JobApplication {
-  id             String             @id @default(cuid())
-  job            JobPosting         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id             String            @id @default(cuid())
+  job            JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
   jobId          String
   fullName       String
   email          String
@@ -223,10 +223,10 @@ model JobApplication {
   resumeUrl      String
   resumeFileName String
   coverNote      String?
-  status         ApplicationStatus  @default(PENDING)
+  status         ApplicationStatus @default(PENDING)
   adminNotes     String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@index([jobId, status])
 }
@@ -245,6 +245,55 @@ model ServiceQuoteRequest {
   updatedAt   DateTime        @updatedAt
 
   @@index([category, status])
+}
+
+// Free online workshops: a time-boxed public feedback form (`/w/[slug]`) that
+// unlocks a downloadable attendance certificate. The registration window
+// (opensAt..closesAt) is the only attendance check — enforced server-side in
+// features/workshops/actions/submit.actions.ts. Select-style response fields
+// are plain strings validated by zod (features/workshops/constants/options.ts)
+// so adding an option never needs a migration.
+model Workshop {
+  id              String             @id @default(cuid())
+  slug            String             @unique
+  title           String
+  typeLabel       String
+  presenterName   String
+  workshopDate    DateTime
+  durationMinutes Int                @default(10)
+  opensAt         DateTime?
+  closesAt        DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  responses       WorkshopResponse[]
+}
+
+// `id` doubles as the unguessable token in the certificate URL
+// (/w/[slug]/done/[id]) — it must stay a cuid, never a sequential value.
+model WorkshopResponse {
+  id                 String   @id @default(cuid())
+  workshop           Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  workshopId         String
+  fullName           String
+  nationality        String
+  education          String
+  educationOther     String?
+  specialization     String
+  currentStatus      String
+  currentStatusOther String?
+  jobTitle           String?
+  yearsExperience    String?
+  organization       String
+  workshopRating     Int
+  presenterRating    Int
+  benefit            String
+  benefitOther       String?
+  recommend          Boolean
+  desiredTopic       String
+  notes              String
+  createdAt          DateTime @default(now())
+
+  @@index([workshopId])
 }
 
 model ContactMessage {

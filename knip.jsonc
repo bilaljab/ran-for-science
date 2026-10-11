@@ -14,6 +14,8 @@
   // the other half of the NextAuth setup and just as cheap to protect.
   "entry": [
     "src/auth.ts",
-    "src/auth.config.ts"
+    "src/auth.config.ts",
+    // Run with `npx tsx --test src/features/workshops/lib/*.test.ts` (node:test, no framework).
+    "src/**/*.test.ts"
   ],
 }

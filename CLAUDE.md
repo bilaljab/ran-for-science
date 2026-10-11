@@ -33,6 +33,7 @@
 
 - `src/app/[locale]/` — public bilingual pages (home, about, services, jobs, contact)
 - `src/app/admin/` — admin dashboard (Arabic-only, not locale-prefixed)
+- `src/app/w/` — Arabic-only workshop pages (`/w/[slug]` feedback form, `/w/[slug]/done/[id]` certificate download), outside `[locale]` like `/admin`; `src/proxy.ts` bypasses next-intl for `/w`. Admin side lives in `src/app/admin/(dashboard)/workshops/**` and `src/features/workshops/`
 - `src/app/api/` — route handlers: admin resume uploads, NextAuth, dev-only resume stub, health check
 - `src/features/{contact,jobs,quotes}/` — one folder per public feature (`actions/`, `components/`, `data/`, `validations/`, `constants/`)
 - `src/lib/` — shared infra: Prisma client, rate-limit/login-attempts/ip-reputation/abuse-counter, storage, email, captcha, fingerprint, logger, require-admin
@@ -53,6 +54,9 @@
 - CSP/security headers are centralized in `next.config.ts` — not middleware or a meta tag
 - Rate limiting/lockout state is persisted in Postgres (`AbuseCounter` table) — not in-memory — because Vercel's serverless model runs multiple instances with no shared memory
 
+- Workshop certificates: attendance is proven ONLY by the time-boxed registration window (`Workshop.opensAt`/`closesAt`, opened by the admin's button, default 10 min), enforced server-side in `features/workshops/actions/submit.actions.ts` via `getRegistrationState` (`lib/registration-window.ts`, tested). The certificate is drawn client-side on a canvas over `public/certificate/template.jpg`; all design coordinates live in `features/workshops/lib/certificate-config.ts`. `WorkshopResponse.id` is the unguessable token in the certificate URL — keep it a cuid
+- Unit tests exist only for pure workshop logic: `npx tsx --test src/features/workshops/lib/*.test.ts` (node:test, no framework)
+
 ## 6. Never Do
 
 - Never commit `.env`, or print/paste secret values (DB URLs, API keys, `AUTH_SECRET`) into files, commits, or logs
@@ -67,4 +71,6 @@
 - `AUTH_SECRET` rotation invalidates every existing admin session immediately, no grace period
 - Git Bash's `/tmp` is invisible to natively-installed Windows tools — write scratch files into the project dir or OS scratchpad instead
 - `core.autocrlf=true` (a common Windows git default) corrupts checksum verification on fresh clones (LF→CRLF rewrite on checkout) — reclone with `-c core.autocrlf=false` when verifying file hashes
+- React 19 resets every uncontrolled field after a `<form action={...}>` completes, so a validation error wipes the form. Long forms (`FeedbackForm`, `WorkshopForm`) dispatch manually: `onSubmit` → `new FormData(form)` → `startTransition(() => formAction(data))`
+- The sidebar logout `<form>` precedes page content in the admin DOM — scripted tests must target `main form`, not `document.querySelector("form")`
 - R2 bucket CORS is a Cloudflare-dashboard setting, not code — resumes upload directly browser→R2, so `AllowedOrigins` must list every live domain (custom domain included). A mismatch fails silently client-side with no server log; if a domain changes, CORS needs a manual update too

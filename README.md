@@ -20,6 +20,7 @@ RAN For Science gives job seekers and businesses a single place to connect. Visi
 - **Job board** — visitors browse open positions, apply with a resume upload, and can track the status of their application; staff review every application from the dashboard
 - **Service quote requests** — businesses can request a quote for environmental, legal, digital, or company-registration services, and every request is tracked from submission through to resolution
 - **Contact form** — a simple way for visitors to reach out, protected by the same spam defenses as every other form on the site
+- **Workshop attendance certificates** — after each free online workshop, the admin opens a short registration window (10 minutes by default) and shares the link in the Zoom chat; attendees fill a feedback form and instantly download a personalised PDF/PNG certificate, while staff review the responses, ratings, and statistics (and export them as CSV) from the dashboard
 - **Built-in spam and abuse protection** — every public form (jobs, quotes, contact) is shielded by multiple layers of automated defenses, so submissions stay genuine without adding friction for real visitors
 - **Secure admin access** — staff log in with optional two-factor authentication, repeated failed logins are automatically slowed down, and any admin can instantly sign out of all their active sessions if they suspect their account was compromised
 - **Full activity history** — every action an admin takes is recorded, so there's always a clear answer to "who did what, and when"

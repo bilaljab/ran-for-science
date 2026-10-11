@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Briefcase, FileText, MessageSquareText, Mail, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Briefcase, GraduationCap, FileText, MessageSquareText, Mail, Settings, LogOut } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/admin", label: "نظرة عامة", icon: LayoutDashboard },
   { href: "/admin/jobs", label: "الوظائف", icon: Briefcase },
+  { href: "/admin/workshops", label: "الورش والشهادات", icon: GraduationCap },
   { href: "/admin/applications", label: "الطلبات والسير الذاتية", icon: FileText },
   { href: "/admin/quotes", label: "طلبات عروض الأسعار", icon: MessageSquareText },
   { href: "/admin/messages", label: "رسائل التواصل", icon: Mail },

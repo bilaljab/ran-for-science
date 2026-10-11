@@ -33,6 +33,11 @@ export default function middleware(req: NextRequest) {
     }
     return NextResponse.next();
   }
+  // Workshop feedback/certificate pages: Arabic-only, outside next-intl's locale routing (like /admin).
+  const { pathname } = req.nextUrl;
+  if (pathname === "/w" || pathname.startsWith("/w/")) {
+    return NextResponse.next();
+  }
   return handleIntlRouting(req);
 }
 
