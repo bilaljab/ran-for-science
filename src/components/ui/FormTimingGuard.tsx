@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 /**
  * Records when the form became interactive, so the server can reject
@@ -25,7 +25,13 @@ import { useEffect, useRef } from "react";
  * activated (the `prerenderingchange` event), matching when the user can
  * really first see and interact with the form.
  */
-export function FormTimingGuard() {
+//
+// `memo` is load-bearing: React 19 re-applies `defaultValue=""` to the DOM node
+// on every re-render, which wipes the timestamp written below. Without it, any
+// form that re-renders after mount (a validation error, a pending state) would
+// submit an EMPTY timestamp on its next attempt — which the server's timing
+// trap treats as "too fast" and silently rejects a real user.
+export const FormTimingGuard = memo(function FormTimingGuard() {
   const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,4 +49,4 @@ export function FormTimingGuard() {
   }, []);
 
   return <input type="hidden" name="formRenderedAt" ref={ref} defaultValue="" />;
-}
+});

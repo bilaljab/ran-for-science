@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { ContactButtons } from "@/features/workshops/components/ContactButtons";
 import { Countdown } from "@/features/workshops/components/Countdown";
 import { FeedbackForm } from "@/features/workshops/components/FeedbackForm";
-import { getWorkshopBySlug, responseBelongsToWorkshop } from "@/features/workshops/data/workshops.data";
+import { getPublicWorkshop, responseBelongsToWorkshop } from "@/features/workshops/data/workshops.data";
 import { workshopCookieName } from "@/features/workshops/lib/cookie";
 import { formatWorkshopDate } from "@/features/workshops/lib/format";
 import { getRegistrationState } from "@/features/workshops/lib/registration-window";
@@ -27,7 +27,7 @@ function Notice({ title, children, contact }: { title: string; children: React.R
 
 export default async function WorkshopPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const workshop = await getWorkshopBySlug(slug);
+  const workshop = await getPublicWorkshop(slug);
   if (!workshop) notFound();
 
   // A student who already submitted from this browser goes straight back to

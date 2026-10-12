@@ -1,13 +1,15 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { WORKSHOPS_TAG } from "@/features/workshops/data/workshops.data";
 import { workshopSchema } from "@/features/workshops/validations/workshop.schema";
 import type { ActionState } from "@/lib/actions/types";
 
@@ -25,6 +27,21 @@ async function guardAdmin(source: string) {
     scope: "ADMIN",
   });
   return allowed ? { adminUserId: session.user.id, ip } : null;
+}
+
+type Admin = NonNullable<Awaited<ReturnType<typeof guardAdmin>>>;
+
+// The audit row is written AFTER the response is sent (Next's after()): the
+// admin never waits on that extra, slow Postgres round trip, and the write
+// still completes on Vercel. logAdminAction already swallows its own errors.
+function audit(admin: Admin, action: string, entityId: string) {
+  after(() => logAdminAction({ ...admin, action, entityType: "Workshop", entityId }));
+}
+
+// Everything cached for the public page must be dropped on any mutation.
+function invalidate() {
+  updateTag(WORKSHOPS_TAG);
+  revalidatePath("/admin/workshops");
 }
 
 function parseWorkshopForm(formData: FormData) {
@@ -55,9 +72,8 @@ export async function createWorkshop(_prevState: ActionState, formData: FormData
 
   const workshop = await prisma.workshop.create({ data: { ...parsed.data, slug } });
 
-  await logAdminAction({ ...admin, action: "workshop.create", entityType: "Workshop", entityId: workshop.id });
-
-  revalidatePath("/admin/workshops");
+  audit(admin, "workshop.create", workshop.id);
+  invalidate();
   redirect("/admin/workshops");
 }
 
@@ -83,9 +99,8 @@ export async function updateWorkshop(id: string, _prevState: ActionState, formDa
   const { count } = await prisma.workshop.updateMany({ where: { id: parsedId.data }, data: { ...parsed.data, slug } });
   if (count === 0) return { success: false, message: "الورشة غير موجودة" };
 
-  await logAdminAction({ ...admin, action: "workshop.update", entityType: "Workshop", entityId: parsedId.data });
-
-  revalidatePath("/admin/workshops");
+  audit(admin, "workshop.update", parsedId.data);
+  invalidate();
   redirect("/admin/workshops");
 }
 
@@ -96,31 +111,29 @@ export async function deleteWorkshop(id: string) {
 
   await prisma.workshop.deleteMany({ where: { id: parsedId.data } });
 
-  await logAdminAction({ ...admin, action: "workshop.delete", entityType: "Workshop", entityId: parsedId.data });
-
-  revalidatePath("/admin/workshops");
+  audit(admin, "workshop.delete", parsedId.data);
+  invalidate();
 }
 
 // The 10-minute (configurable) attendance window starts HERE, at the click —
 // not at the scheduled workshop time — because the admin posts the link in the
-// Zoom chat right after pressing it.
+// Zoom chat right after pressing it. One statement (no read-then-write round
+// trip), timed by the database clock so there is a single source of truth.
 export async function openRegistration(id: string) {
   const admin = await guardAdmin("admin-workshop-open");
   const parsedId = idSchema.safeParse(id);
   if (!admin || !parsedId.success) return;
 
-  const workshop = await prisma.workshop.findUnique({ where: { id: parsedId.data } });
-  if (!workshop) return;
+  const updated = await prisma.$executeRaw`
+    UPDATE "Workshop"
+    SET "opensAt" = now(),
+        "closesAt" = now() + ("durationMinutes" * interval '1 minute'),
+        "updatedAt" = now()
+    WHERE id = ${parsedId.data}`;
+  if (updated === 0) return;
 
-  const now = new Date();
-  await prisma.workshop.update({
-    where: { id: workshop.id },
-    data: { opensAt: now, closesAt: new Date(now.getTime() + workshop.durationMinutes * 60_000) },
-  });
-
-  await logAdminAction({ ...admin, action: "workshop.open", entityType: "Workshop", entityId: workshop.id });
-
-  revalidatePath("/admin/workshops");
+  audit(admin, "workshop.open", parsedId.data);
+  invalidate();
 }
 
 export async function closeRegistration(id: string) {
@@ -130,12 +143,10 @@ export async function closeRegistration(id: string) {
 
   // Only an already-opened window can be closed; `closesAt` alone must never
   // make a never-opened workshop look "closed".
-  await prisma.workshop.updateMany({
-    where: { id: parsedId.data, opensAt: { not: null } },
-    data: { closesAt: new Date() },
-  });
+  await prisma.$executeRaw`
+    UPDATE "Workshop" SET "closesAt" = now(), "updatedAt" = now()
+    WHERE id = ${parsedId.data} AND "opensAt" IS NOT NULL`;
 
-  await logAdminAction({ ...admin, action: "workshop.close", entityType: "Workshop", entityId: parsedId.data });
-
-  revalidatePath("/admin/workshops");
+  audit(admin, "workshop.close", parsedId.data);
+  invalidate();
 }

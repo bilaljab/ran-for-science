@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 /**
  * Best-effort, optional bot/device signal — if this fails to load (ad-blocker,
@@ -17,8 +17,11 @@ import { useEffect, useRef, useState } from "react";
  * hydration keeps the server-prerendered value for the very first render —
  * silently discarding the client's real value forever on any statically-
  * generated page. An effect-driven ref write sidesteps that entirely.
+ *
+ * `memo` keeps the `fpBot` DOM write alive: React 19 re-applies
+ * `defaultValue=""` on every parent re-render, which would silently clear it.
  */
-export function BrowserFingerprint() {
+export const BrowserFingerprint = memo(function BrowserFingerprint() {
   const [fp, setFp] = useState("");
   const fpBotRef = useRef<HTMLInputElement>(null);
 
@@ -51,4 +54,4 @@ export function BrowserFingerprint() {
       <input type="hidden" name="fpBot" ref={fpBotRef} defaultValue="" />
     </>
   );
-}
+});

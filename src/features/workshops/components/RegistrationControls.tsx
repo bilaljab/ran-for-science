@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Link2, Lock, RotateCcw, Unlock } from "lucide-react";
 import { closeRegistration, openRegistration } from "@/features/workshops/actions/admin.actions";
+import { PendingSubmit } from "@/features/workshops/components/PendingSubmit";
 import type { RegistrationState } from "@/features/workshops/lib/registration-window";
 
 const buttonClass =
@@ -30,8 +31,7 @@ export function RegistrationControls({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <form action={openRegistration.bind(null, id)}>
-        <button
-          type="submit"
+        <PendingSubmit
           className={
             state === "open"
               ? buttonClass
@@ -40,15 +40,15 @@ export function RegistrationControls({
         >
           {state === "open" ? <RotateCcw aria-hidden className="h-3.5 w-3.5" /> : <Unlock aria-hidden className="h-3.5 w-3.5" />}
           {state === "open" ? `إعادة ضبط ${durationMinutes} دقائق` : state === "closed" ? "إعادة فتح التسجيل" : "افتح التسجيل الآن"}
-        </button>
+        </PendingSubmit>
       </form>
 
       {state === "open" && (
         <form action={closeRegistration.bind(null, id)}>
-          <button type="submit" className={buttonClass}>
+          <PendingSubmit className={buttonClass}>
             <Lock aria-hidden className="h-3.5 w-3.5" />
             أغلق الآن
-          </button>
+          </PendingSubmit>
         </form>
       )}
 

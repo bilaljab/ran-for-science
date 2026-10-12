@@ -49,27 +49,41 @@ export async function submitWorkshopResponse(
     return BLOCKED;
   }
 
-  if (await isKnownBadFingerprint(fp, "PUBLIC")) return BLOCKED;
+  // Pure input validation first: costs no database round trip and, on a typo,
+  // doesn't burn the student's single-use Turnstile token.
+  const parsed = workshopResponseSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { success: false, errors: parsed.error.flatten().fieldErrors };
+  }
 
-  if (
-    !(await checkRateLimit(`workshop:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, {
+  // The four independent checks run in parallel: each Postgres/Cloudflare round
+  // trip is slow in production, so running them back-to-back cost seconds. They
+  // are still EVALUATED in the original priority order below.
+  const [badFingerprint, allowed, captchaOk, workshop] = await Promise.all([
+    isKnownBadFingerprint(fp, "PUBLIC"),
+    checkRateLimit(`workshop:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, {
       ip,
       source: "workshop",
       scope: "PUBLIC",
       fingerprint: typeof fp === "string" ? fp : undefined,
-    }))
-  ) {
+    }),
+    verifyCaptcha(formData.get("cf-turnstile-response"), ip),
+    getWorkshopBySlug(slug),
+  ]);
+
+  if (badFingerprint) return BLOCKED;
+
+  if (!allowed) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 
-  if (!(await verifyCaptcha(formData.get("cf-turnstile-response"), ip))) {
+  if (!captchaOk) {
     logAbuseEvent({ type: "captcha_failed", ip, detail: "workshop" });
     return { success: false, message: "تعذر التحقق من أنك لست روبوتاً، الرجاء المحاولة مرة أخرى." };
   }
 
-  const workshop = await getWorkshopBySlug(slug);
-  // The attendance check: the window is enforced HERE, on the server clock,
-  // never trusted from the page the student happens to have open.
+  // The attendance check: the window is enforced HERE, on the server clock and
+  // the authoritative (uncached) row, never trusted from the page the student has open.
   if (!workshop || getRegistrationState(workshop, new Date(), SUBMIT_GRACE_MS) !== "open") {
     return { success: false, message: "انتهى وقت التسجيل لهذه الورشة." };
   }
@@ -79,11 +93,6 @@ export async function submitWorkshopResponse(
   const previousId = cookieStore.get(cookieName)?.value;
   if (previousId && (await responseBelongsToWorkshop(workshop.id, previousId))) {
     redirect(`/w/${workshop.slug}/done/${previousId}`);
-  }
-
-  const parsed = workshopResponseSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    return { success: false, errors: parsed.error.flatten().fieldErrors };
   }
 
   const response = await prisma.workshopResponse.create({
