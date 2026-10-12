@@ -25,6 +25,14 @@ npx eslint .
 npm run build
 ```
 
+## Function region
+
+`vercel.json` pins serverless functions to `fra1` (Frankfurt), the same region as the Neon database (`eu-central-1`). With functions in the default `iad1`, every Postgres query crossed the Atlantic (~1s each, measured on production). The Hobby plan allows exactly one region.
+
+- If the database ever moves (new Neon region, another provider), change `regions` in `vercel.json` to the nearest Vercel region **in the same deploy**, then re-measure TTFB of `/api/health` — it should be a fraction of a second, not ~1s.
+- Confirm which region served a request with `curl -sI https://ranforscience.com/api/health | grep -i x-vercel-id` (the second segment, e.g. `bom1::fra1::…`, is the function region).
+- The Neon free tier suspends compute after ~5 minutes idle; the first request after that is slower. That is expected, not a regression.
+
 ## Secret rotation
 
 Recommended cadence: every 90 days, or immediately if a leak is suspected. Not every secret rotates the same way:

@@ -117,6 +117,7 @@ Visit [http://localhost:3000](http://localhost:3000) for the public site and [ht
 | `npm run start` | `next start` | Run a production build locally |
 | `npm run lint` | `eslint` | Lint the codebase |
 | `npm run knip` | `knip` | Detect dead code and unused exports |
+| `npx tsx --test src/features/workshops/lib/*.test.ts` | `node:test` | Unit tests for the workshop registration-window and CSV logic |
 
 ## Project Structure
 
@@ -124,9 +125,10 @@ Visit [http://localhost:3000](http://localhost:3000) for the public site and [ht
 src/
 ├── app/
 │   ├── [locale]/    # Public bilingual pages (home, about, services, jobs, contact)
-│   ├── admin/       # Admin dashboard (Arabic-only, not locale-prefixed)
-│   └── api/         # Route handlers (NextAuth, resume uploads, health check)
-├── features/        # contact/, jobs/, quotes/ — actions, components, validations per feature
+│   ├── admin/       # Admin dashboard (Arabic-only, not locale-prefixed), incl. Workshops
+│   ├── w/           # Workshop feedback form + certificate download (Arabic-only, not locale-prefixed)
+│   └── api/         # Route handlers (NextAuth, resume uploads, workshop CSV export, health check)
+├── features/        # contact/, jobs/, quotes/, workshops/ — actions, components, validations per feature
 ├── components/      # Shared UI, layout, motion, illustrations
 ├── lib/             # Shared infra: Prisma client, rate limiting, storage, email, logging
 ├── auth.ts, auth.config.ts   # NextAuth v5 configuration
@@ -135,6 +137,9 @@ src/
 
 prisma/
 └── schema.prisma    # Data model
+
+public/certificate/template.jpg   # Certificate background (design coordinates: src/features/workshops/lib/certificate-config.ts)
+vercel.json                       # Pins serverless functions to fra1, next to the Neon database
 ```
 
 ## License
