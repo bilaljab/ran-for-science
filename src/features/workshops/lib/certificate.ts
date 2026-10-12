@@ -95,20 +95,38 @@ function splitTitle(ctx: CanvasRenderingContext2D, family: string, title: string
   return best;
 }
 
+// Canvas memory limits differ a lot between devices (some Android phones fail
+// to allocate a 3508x2480 canvas and hand back a blank one), so try full size
+// first, then smaller. All drawing happens in design coordinates, scaled by ctx.
+const SCALES = [1, 0.7, 0.5];
+
 async function renderCertificate(data: CertificateData): Promise<HTMLCanvasElement> {
   const family = fontFamily();
   const allText = `${data.fullName}${data.title}${data.typeLabel}${data.presenterName}${data.date}${C.closingText}حضر/ت ضمن مبادرتنا البيئيةبعنوانبتقديمبتاريخ0123456789/ `;
   const [template] = await Promise.all([
     loadImage(C.templateSrc),
-    document.fonts.load(font(family, 100, true), allText),
-    document.fonts.load(font(family, 100, false), allText),
+    // A font-loading failure must not block the certificate: text falls back to a system font.
+    Promise.all([document.fonts.load(font(family, 100, true), allText), document.fonts.load(font(family, 100, false), allText)]).catch(() => undefined),
   ]);
 
+  for (const scale of SCALES) {
+    try {
+      const canvas = paint(data, template, family, scale);
+      if (canvas) return canvas;
+    } catch {
+      // fall through to the next, smaller size
+    }
+  }
+  throw new Error("Could not render the certificate on this device");
+}
+
+function paint(data: CertificateData, template: HTMLImageElement, family: string, scale: number): HTMLCanvasElement | null {
   const canvas = document.createElement("canvas");
-  canvas.width = C.width;
-  canvas.height = C.height;
+  canvas.width = Math.round(C.width * scale);
+  canvas.height = Math.round(C.height * scale);
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas is not supported");
+  if (!ctx) return null;
+  ctx.scale(scale, scale);
   ctx.drawImage(template, 0, 0, C.width, C.height);
 
   // Attendee name: shrinks to fit rather than clipping.
@@ -143,7 +161,8 @@ async function renderCertificate(data: CertificateData): Promise<HTMLCanvasEleme
   y += gap;
   drawRtlLine(ctx, family, p.fontSize, [{ text: C.closingText }], y);
 
-  return canvas;
+  // A canvas that failed to allocate comes back blank; the template's corner pixel is always opaque.
+  return ctx.getImageData(5, 5, 1, 1).data[3] === 255 ? canvas : null;
 }
 
 function save(url: string, filename: string) {
