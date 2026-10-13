@@ -48,6 +48,7 @@
 - Path alias `@/*` → `src/*`
 - Server Actions return a shared `ActionState` shape (`src/lib/actions/types.ts`), consumed via `useActionState`; validation is Zod schemas under each feature's `validations/`
 - Admin routes/actions use `getValidAdminSession()` / `requireAdmin()` from `src/lib/require-admin.ts` — never raw `auth()` (a previously-fixed session-bypass bug)
+- Every `src/app/admin/(dashboard)/**/page.tsx` must call `await requireAdminPage()` (`src/lib/require-admin.ts`) as its FIRST statement — the layout's check does not stop a page's queries from running and being serialized into the response
 - Public forms (contact, quote, apply) each carry: a honeypot field (`website`), a timing-trap field (`formRenderedAt`), a fingerprint pair (`fp`/`fpBot`), and Cloudflare Turnstile
 - One-time-token flows (password reset, email verification) claim atomically via `updateMany({ where: { usedAt: null } })` before any slow operation (bcrypt) — avoids a TOCTOU race
 - Structured logging goes through `src/lib/logger.ts` (pino → stdout JSON), not raw `console.*`

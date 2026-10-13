@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getClientIp } from "@/lib/rate-limit";
@@ -34,9 +36,10 @@ async function isSessionStale(
 /**
  * Non-throwing variant for use in page/layout Server Components, where a
  * clean redirect is preferable to an error boundary. Returns the session if
- * it's valid and fresh, or null otherwise.
+ * it's valid and fresh, or null otherwise. cache() dedupes per RSC render and
+ * is a pass-through in route handlers / Server Actions (no render scope).
  */
-export async function getValidAdminSession() {
+export const getValidAdminSession = cache(async () => {
   const session = await auth();
   if (!session?.user) return null;
   if (await isSessionStale(session.user.id, session.user.passwordChangedAt, session.user.sessionVersion)) {
@@ -44,6 +47,18 @@ export async function getValidAdminSession() {
     logger.warn({ ip }, "auth_stale_session_rejected");
     return null;
   }
+  return session;
+});
+
+/**
+ * First statement of EVERY admin page.tsx. The (dashboard) layout's check does
+ * not protect page data: Next renders layout and page concurrently, so a page's
+ * queries run (and get serialized into the response) even when the layout
+ * redirects. cache() above makes layout + page share one auth()+DB check.
+ */
+export async function requireAdminPage() {
+  const session = await getValidAdminSession();
+  if (!session) redirect("/admin/login");
   return session;
 }
 

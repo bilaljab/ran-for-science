@@ -1,4 +1,5 @@
 import { isIP } from "net";
+import { normalizeIp } from "@/lib/normalize-ip";
 import { headers } from "next/headers";
 import { isIpBlocked, recordRateLimitViolation } from "@/lib/ip-reputation";
 import { logAbuseEvent } from "@/lib/abuse-log";
@@ -62,10 +63,11 @@ export async function checkRateLimit(
 // actually parse as an IPv4/IPv6 address — garbage/oversized/injected
 // values fall back to "unknown" instead of being used as-is (which would
 // otherwise let an attacker mint unlimited distinct rate-limit buckets with
-// junk strings).
+// junk strings). IPv6 is collapsed to its /64 (see normalizeIp) so an attacker
+// can't mint fresh buckets by rotating within their own allocation.
 export async function getClientIp(): Promise<string> {
   const h = await headers();
   const forwarded = h.get("x-vercel-forwarded-for") ?? h.get("x-forwarded-for");
   const candidate = forwarded ? forwarded.split(",")[0].trim() : h.get("x-real-ip");
-  return candidate && isIP(candidate) ? candidate : "unknown";
+  return candidate && isIP(candidate) ? normalizeIp(candidate) : "unknown";
 }

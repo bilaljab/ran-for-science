@@ -6,6 +6,7 @@ import { getResponses, getWorkshopForAdmin, getWorkshopStats } from "@/features/
 import { OTHER_OPTION } from "@/features/workshops/constants/options";
 import { formatWorkshopDate } from "@/features/workshops/lib/format";
 import { idSchema } from "@/lib/validation";
+import { requireAdminPage } from "@/lib/require-admin";
 
 const rating = (value: number | null) => (value === null ? "—" : `${value.toFixed(1)} من 5`);
 const withOther = (value: string, other: string | null) => (value === OTHER_OPTION && other ? `${value}: ${other}` : value);
@@ -20,6 +21,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 export default async function WorkshopResponsesPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const parsedId = idSchema.safeParse((await params).id);
   if (!parsedId.success) notFound();
   const workshop = await getWorkshopForAdmin(parsedId.data);

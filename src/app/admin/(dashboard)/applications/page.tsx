@@ -8,12 +8,14 @@ import {
   applicationStatusOptions,
   applicationStatusValuesList,
 } from "@/features/jobs/constants/status-labels";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function AdminApplicationsPage({
   searchParams,
 }: {
   searchParams: Promise<{ jobId?: string; status?: string }>;
 }) {
+  await requireAdminPage();
   const { jobId, status } = await searchParams;
 
   const [applications, jobs] = await Promise.all([

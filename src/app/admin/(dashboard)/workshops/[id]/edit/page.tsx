@@ -4,8 +4,10 @@ import { updateWorkshop } from "@/features/workshops/actions/admin.actions";
 import { getWorkshopForAdmin } from "@/features/workshops/data/workshops.data";
 import { toDateInputValue } from "@/features/workshops/lib/format";
 import { idSchema } from "@/lib/validation";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function EditWorkshopPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const parsedId = idSchema.safeParse((await params).id);
   if (!parsedId.success) notFound();
   const workshop = await getWorkshopForAdmin(parsedId.data);

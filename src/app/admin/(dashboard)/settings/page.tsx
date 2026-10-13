@@ -1,6 +1,8 @@
 import { RevokeSessionsButton } from "@/components/admin/RevokeSessionsButton";
+import { requireAdminPage } from "@/lib/require-admin";
 
-export default function AdminSettingsPage() {
+export default async function AdminSettingsPage() {
+  await requireAdminPage();
   return (
     <div>
       <h1 className="text-2xl font-bold text-primary-800">الإعدادات</h1>

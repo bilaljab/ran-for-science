@@ -3,8 +3,10 @@ import { StatusSelect } from "@/components/admin/StatusSelect";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { updateMessageStatus, deleteMessage } from "@/features/contact/actions/status.actions";
 import { messageStatusOptions } from "@/features/contact/constants/status-labels";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function AdminMessagesPage() {
+  await requireAdminPage();
   const messages = await getContactMessages();
 
   return (

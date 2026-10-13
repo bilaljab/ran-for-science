@@ -5,12 +5,14 @@ import { updateQuoteStatus, deleteQuote } from "@/features/quotes/actions/status
 import { serviceCategoryLabelsAr } from "@/features/quotes/constants/categories-ar";
 import { quoteStatusOptions } from "@/features/quotes/constants/status-labels";
 import { ServiceCategory } from "@/generated/prisma/enums";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function AdminQuotesPage({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string; status?: string }>;
 }) {
+  await requireAdminPage();
   const { category, status } = await searchParams;
 
   const quotes = await getQuoteRequests({ category, status });

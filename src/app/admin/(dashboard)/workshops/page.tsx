@@ -7,6 +7,7 @@ import { deleteWorkshop } from "@/features/workshops/actions/admin.actions";
 import { getAdminWorkshops } from "@/features/workshops/data/workshops.data";
 import { formatWorkshopDate } from "@/features/workshops/lib/format";
 import { getRegistrationState, type RegistrationState } from "@/features/workshops/lib/registration-window";
+import { requireAdminPage } from "@/lib/require-admin";
 
 const stateBadge: Record<RegistrationState, { label: string; tone: "mint" | "neutral" | "mauve" }> = {
   not_opened: { label: "لم يُفتح", tone: "neutral" },
@@ -15,6 +16,7 @@ const stateBadge: Record<RegistrationState, { label: string; tone: "mint" | "neu
 };
 
 export default async function AdminWorkshopsPage() {
+  await requireAdminPage();
   const workshops = await getAdminWorkshops();
   const now = new Date();
 

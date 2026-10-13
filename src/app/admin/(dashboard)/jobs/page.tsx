@@ -4,8 +4,10 @@ import { getAdminJobs } from "@/features/jobs/data/jobs.data";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { DeleteJobButton } from "@/features/jobs/components/DeleteJobButton";
 import { jobStatusLabels, jobStatusTones } from "@/features/jobs/constants/status-labels";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function AdminJobsPage() {
+  await requireAdminPage();
   const jobs = await getAdminJobs();
 
   return (

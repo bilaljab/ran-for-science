@@ -1,7 +1,9 @@
 import { JobForm } from "@/features/jobs/components/JobForm";
 import { createJob } from "@/features/jobs/actions/admin.actions";
+import { requireAdminPage } from "@/lib/require-admin";
 
-export default function NewJobPage() {
+export default async function NewJobPage() {
+  await requireAdminPage();
   return (
     <div>
       <h1 className="text-2xl font-bold text-primary-800">وظيفة جديدة</h1>

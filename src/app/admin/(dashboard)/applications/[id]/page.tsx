@@ -4,12 +4,14 @@ import { getJobApplicationDetail } from "@/features/jobs/data/jobs.data";
 import { Card } from "@/components/ui/Card";
 import { ApplicationDetailForm } from "@/features/jobs/components/ApplicationDetailForm";
 import { idSchema } from "@/lib/validation";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function ApplicationDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdminPage();
   const parsedId = idSchema.safeParse((await params).id);
   if (!parsedId.success) notFound();
   const application = await getJobApplicationDetail(parsedId.data);

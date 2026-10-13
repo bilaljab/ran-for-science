@@ -3,8 +3,10 @@ import { getJobDashboardCounts } from "@/features/jobs/data/jobs.data";
 import { getNewQuoteCount } from "@/features/quotes/data/quotes.data";
 import { getNewMessageCount } from "@/features/contact/data/contact.data";
 import { Card } from "@/components/ui/Card";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function AdminDashboardPage() {
+  await requireAdminPage();
   const [{ publishedJobs, pendingApplications }, newQuotes, newMessages] = await Promise.all([
     getJobDashboardCounts(),
     getNewQuoteCount(),

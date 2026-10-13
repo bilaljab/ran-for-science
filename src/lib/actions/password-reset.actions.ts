@@ -1,11 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { generateRawToken, hashToken } from "@/lib/tokens";
 import { sendEmail } from "@/lib/email";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import type { ActionState } from "@/lib/actions/types";
 
 const RESET_REQUEST_LIMIT = 3;
@@ -47,27 +49,45 @@ export async function requestPasswordReset(
     return { success: false, errors: parsed.error.flatten().fieldErrors };
   }
 
-  const admin = await prisma.adminUser.findUnique({ where: { email: parsed.data.email } });
+  const email = parsed.data.email;
 
-  // Always behave identically whether or not the account exists, to prevent
-  // using this endpoint to enumerate valid admin emails.
-  if (admin) {
-    const rawToken = generateRawToken();
-    await prisma.passwordResetToken.create({
-      data: {
-        tokenHash: hashToken(rawToken),
-        adminUserId: admin.id,
-        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
-      },
-    });
+  // Lookup + token + email run after the response is sent, so the existing-
+  // and unknown-account paths return in the same time (no timing oracle).
+  // Nothing in here may throw — failures are logged, never surfaced.
+  after(async () => {
+    try {
+      if (
+        !(await checkRateLimit(`reset-email:${email.toLowerCase()}`, RESET_REQUEST_LIMIT, RESET_REQUEST_WINDOW_MS, {
+          ip,
+          source: "reset-email",
+          scope: "ADMIN",
+        }))
+      ) {
+        return;
+      }
 
-    const resetUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/admin/reset-password?token=${rawToken}`;
-    await sendEmail({
-      to: admin.email,
-      subject: "إعادة تعيين كلمة المرور - RAN For Science",
-      html: `<p>اضغط على الرابط التالي لإعادة تعيين كلمة المرور (صالح لمدة ساعة واحدة):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-    });
-  }
+      const admin = await prisma.adminUser.findUnique({ where: { email } });
+      if (!admin) return;
+
+      const rawToken = generateRawToken();
+      await prisma.passwordResetToken.create({
+        data: {
+          tokenHash: hashToken(rawToken),
+          adminUserId: admin.id,
+          expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+        },
+      });
+
+      const resetUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/admin/reset-password?token=${rawToken}`;
+      await sendEmail({
+        to: admin.email,
+        subject: "إعادة تعيين كلمة المرور - RAN For Science",
+        html: `<p>اضغط على الرابط التالي لإعادة تعيين كلمة المرور (صالح لمدة ساعة واحدة):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+      });
+    } catch (err) {
+      logger.error({ err }, "password_reset_request_failed");
+    }
+  });
 
   return { success: true, message: GENERIC_MESSAGE };
 }

@@ -3,8 +3,10 @@ import { getJobById } from "@/features/jobs/data/jobs.data";
 import { JobForm } from "@/features/jobs/components/JobForm";
 import { updateJob } from "@/features/jobs/actions/admin.actions";
 import { idSchema } from "@/lib/validation";
+import { requireAdminPage } from "@/lib/require-admin";
 
 export default async function EditJobPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const parsedId = idSchema.safeParse((await params).id);
   if (!parsedId.success) notFound();
   const job = await getJobById(parsedId.data);
