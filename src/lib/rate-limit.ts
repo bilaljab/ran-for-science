@@ -1,3 +1,4 @@
+import "server-only";
 import { isIP } from "net";
 import { normalizeIp } from "@/lib/normalize-ip";
 import { headers } from "next/headers";
@@ -15,18 +16,18 @@ import type { FingerprintScope } from "@/generated/prisma/enums";
  *
  * `reputation`, when passed, feeds violations into the IP-reputation tracker
  * (see lib/ip-reputation.ts) and rejects up front if that IP is already
- * under a blanket block from repeatedly abusing *other* endpoints. Its
- * optional `fingerprint` is forwarded so that if this violation is the one
- * that actually crosses the IP-block threshold, that specific device gets
- * flagged too (see lib/fingerprint.ts) — not just its current IP.
+ * under a blanket block from repeatedly abusing *other* endpoints of the same
+ * scope. Omit it for surfaces whose limit is deliberately NAT-sized (the
+ * workshop form): they keep their plain rate limit but never feed — or get
+ * blocked by — the reputation tracker.
  */
 export async function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
-  reputation?: { ip: string; source: string; scope: FingerprintScope; fingerprint?: string }
+  reputation?: { ip: string; source: string; scope: FingerprintScope }
 ): Promise<boolean> {
-  if (reputation && (await isIpBlocked(reputation.ip))) {
+  if (reputation && (await isIpBlocked(reputation.ip, reputation.scope))) {
     logAbuseEvent({ type: "blocked_ip_rejected", ip: reputation.ip, detail: `source=${reputation.source}` });
     return false;
   }
@@ -38,7 +39,7 @@ export async function checkRateLimit(
   const { count } = await incrementCounter(`ratelimit:${key}`, windowMs);
 
   if (count > limit) {
-    if (reputation) await recordRateLimitViolation(reputation.ip, reputation.source, reputation.scope, reputation.fingerprint);
+    if (reputation) await recordRateLimitViolation(reputation.ip, reputation.source, reputation.scope);
     return false;
   }
 

@@ -1,0 +1,25 @@
+rules:
+  - id: no-unsafe-raw-sql
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      Raw SQL is built from a non-literal string ($queryRawUnsafe / $executeRawUnsafe / Prisma.raw), which is
+      SQL injection when any part is user-controlled. Use Prisma's tagged templates (prisma.$queryRaw`...`,
+      prisma.$executeRaw`...`, Prisma.sql`...`), which always send values as bound parameters, as
+      src/lib/abuse-counter.ts and the workshop window actions do. A call is only accepted when the SQL text
+      is a plain string literal (values passed as extra arguments).
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      confidence: HIGH
+    paths:
+      exclude:
+        - "/src/generated/"
+    patterns:
+      - pattern-either:
+          - pattern: $DB.$queryRawUnsafe(...)
+          - pattern: $DB.$executeRawUnsafe(...)
+          - pattern: Prisma.raw(...)
+      - pattern-not: $DB.$queryRawUnsafe("...", ...)
+      - pattern-not: $DB.$executeRawUnsafe("...", ...)
+      - pattern-not: Prisma.raw("...")

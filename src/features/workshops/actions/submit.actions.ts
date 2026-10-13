@@ -12,7 +12,8 @@ import { getWorkshopBySlug, responseBelongsToWorkshop } from "@/features/worksho
 import { getRegistrationState, SUBMIT_GRACE_MS } from "@/features/workshops/lib/registration-window";
 import { workshopResponseSchema } from "@/features/workshops/validations/response.schema";
 import { workshopCookieName } from "@/features/workshops/lib/cookie";
-import { HONEYPOT_FIELD, OTHER_OPTION } from "@/features/workshops/constants/options";
+import { OTHER_OPTION } from "@/features/workshops/constants/options";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 import type { ActionState } from "@/lib/actions/types";
 
 // More generous than the contact form: a whole cohort can sit behind one
@@ -61,12 +62,9 @@ export async function submitWorkshopResponse(
   // are still EVALUATED in the original priority order below.
   const [badFingerprint, allowed, captchaOk, workshop] = await Promise.all([
     isKnownBadFingerprint(fp, "PUBLIC"),
-    checkRateLimit(`workshop:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, {
-      ip,
-      source: "workshop",
-      scope: "PUBLIC",
-      fingerprint: typeof fp === "string" ? fp : undefined,
-    }),
+    // No `reputation` arg on purpose: the limit is NAT-sized, so a whole
+    // cohort behind one IP must not feed (or be blocked by) the IP-reputation tracker.
+    checkRateLimit(`workshop:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS),
     verifyCaptcha(formData.get("cf-turnstile-response"), ip),
     getWorkshopBySlug(slug),
   ]);

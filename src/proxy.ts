@@ -25,7 +25,8 @@ const SESSION_COOKIE_NAMES = ["__Secure-authjs.session-token", "authjs.session-t
 // even a session" fast-fail, exactly as it always was meant to be.
 export default function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/admin")) {
-    const isPublicAdminPath = PUBLIC_ADMIN_PATHS.some((path) => req.nextUrl.pathname.startsWith(path));
+    const { pathname } = req.nextUrl;
+    const isPublicAdminPath = PUBLIC_ADMIN_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
     const hasSessionCookie = SESSION_COOKIE_NAMES.some((name) => req.cookies.has(name));
     if (!isPublicAdminPath && !hasSessionCookie) {
       const loginUrl = new URL("/admin/login", req.nextUrl.origin);

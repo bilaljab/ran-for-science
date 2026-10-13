@@ -36,19 +36,25 @@ export default async function JobsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ field?: string; jobType?: string }>;
+  searchParams: Promise<{ field?: string | string[]; jobType?: string | string[] }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations();
 
-  const { field, jobType } = await searchParams;
+  const { field: rawField, jobType: rawJobType } = await searchParams;
   const jobTypeValues = Object.values(JobType) as string[];
 
-  const [jobs, fields] = await Promise.all([
-    getPublishedJobs({ field, jobType }),
-    getPublishedJobFields(),
-  ]);
+  // Normalise BEFORE the cached query: `?field=a&field=b` arrives as an array,
+  // and every distinct raw string would otherwise mint its own unstable_cache
+  // entry. Only a published field / a real JobType ever reaches the cache key.
+  // The fields list is itself cached, so awaiting it first is cheap.
+  const fields = await getPublishedJobFields();
+  const field =
+    typeof rawField === "string" && fields.some((f) => f.field === rawField) ? rawField : undefined;
+  const jobType =
+    typeof rawJobType === "string" && jobTypeValues.includes(rawJobType) ? rawJobType : undefined;
+  const jobs = await getPublishedJobs({ field, jobType });
 
   return (
     <div>

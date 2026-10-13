@@ -7,6 +7,7 @@ import { verifyCaptcha } from "@/lib/captcha";
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { isKnownBadFingerprint } from "@/lib/fingerprint";
 import { isTooFast } from "@/lib/timing-trap";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 import type { ActionState } from "@/lib/actions/types";
 
 const SUBMIT_LIMIT = 5;
@@ -19,7 +20,7 @@ export async function submitContactMessage(
   const ip = await getClientIp();
   const fp = formData.get("fp");
 
-  if (formData.get("website")) {
+  if (formData.get(HONEYPOT_FIELD)) {
     return { success: true };
   }
 
@@ -34,10 +35,10 @@ export async function submitContactMessage(
   }
 
   if (await isKnownBadFingerprint(fp, "PUBLIC")) {
-    return { success: true };
+    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 
-  if (!(await checkRateLimit(`contact:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "contact", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined }))) {
+  if (!(await checkRateLimit(`contact:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "contact", scope: "PUBLIC" }))) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 

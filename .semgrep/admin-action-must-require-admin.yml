@@ -1,0 +1,52 @@
+rules:
+  - id: admin-action-must-require-admin
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      Exported Server Action `$F` must call `await requireAdmin()` (or the local `guardAdmin(...)` wrapper that
+      calls it) as its FIRST statement. Every export of a "use server" file is a public HTTP endpoint that
+      anyone can invoke directly, with or without the admin UI; middleware and layout checks do not protect it.
+      If this action is intentionally public (a visitor form such as submit/apply/auth), add its file name to the
+      `paths.exclude` list of this rule in .semgrep/admin-action-must-require-admin.yml.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      confidence: HIGH
+    paths:
+      include:
+        - "/src/features/**/actions/*.ts"
+        - "/src/lib/actions/*.ts"
+      exclude:
+        # Public visitor-facing actions: protected by rate limits, honeypot and Turnstile instead of admin auth.
+        - "submit.actions.ts"
+        - "apply.actions.ts"
+        - "presign-resume.actions.ts"
+        - "auth.ts"
+        - "password-reset.actions.ts"
+        - "email-verification.actions.ts"
+        - "types.ts"
+    patterns:
+      - pattern-inside: |
+          "use server";
+          ...
+      - pattern: export async function $F(...) { ... }
+      - pattern-not: |
+          export async function $F(...) {
+            await requireAdmin();
+            ...
+          }
+      - pattern-not: |
+          export async function $F(...) {
+            const $S = await requireAdmin();
+            ...
+          }
+      - pattern-not: |
+          export async function $F(...) {
+            await guardAdmin(...);
+            ...
+          }
+      - pattern-not: |
+          export async function $F(...) {
+            const $S = await guardAdmin(...);
+            ...
+          }

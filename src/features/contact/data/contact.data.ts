@@ -1,3 +1,4 @@
+import "server-only";
 import { prisma } from "@/lib/prisma";
 
 // Safety cap, not real pagination — bounds worst-case query cost as the

@@ -7,6 +7,7 @@ import { verifyCaptcha } from "@/lib/captcha";
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { isKnownBadFingerprint } from "@/lib/fingerprint";
 import { isTooFast } from "@/lib/timing-trap";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 import type { ActionState } from "@/lib/actions/types";
 import type { ServiceCategory } from "@/generated/prisma/enums";
 
@@ -21,7 +22,7 @@ export async function submitQuoteRequest(
   const fp = formData.get("fp");
 
   // Honeypot: real users never fill this hidden field; bots usually do.
-  if (formData.get("website")) {
+  if (formData.get(HONEYPOT_FIELD)) {
     return { success: true };
   }
 
@@ -36,10 +37,10 @@ export async function submitQuoteRequest(
   }
 
   if (await isKnownBadFingerprint(fp, "PUBLIC")) {
-    return { success: true };
+    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 
-  if (!(await checkRateLimit(`quote:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "quote", scope: "PUBLIC", fingerprint: typeof fp === "string" ? fp : undefined }))) {
+  if (!(await checkRateLimit(`quote:${ip}`, SUBMIT_LIMIT, SUBMIT_WINDOW_MS, { ip, source: "quote", scope: "PUBLIC" }))) {
     return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 

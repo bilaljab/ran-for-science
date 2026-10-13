@@ -1,0 +1,33 @@
+rules:
+  - id: no-dangerously-set-inner-html-with-dynamic
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      dangerouslySetInnerHTML with a dynamic value is an XSS sink. The only accepted forms are a string
+      literal, a SCREAMING_CASE module constant, or JSON-LD escaped with
+      `JSON.stringify(...).replace(/</g, "\\u003c")` (without the replace, a "</script>" inside the data
+      breaks out of the script tag, see jobs/[slug]/page.tsx). Render user or database text as normal JSX
+      children so React escapes it.
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      confidence: HIGH
+    paths:
+      exclude:
+        - "/src/generated/"
+    patterns:
+      - pattern: |
+          <$EL ... dangerouslySetInnerHTML={$V} ... />
+      - pattern-not: |
+          <$EL ... dangerouslySetInnerHTML={{ __html: "..." }} ... />
+      - pattern-not: |
+          <$EL ... dangerouslySetInnerHTML={{ __html: JSON.stringify(...).replace(/</g, "\\u003c") }} ... />
+      - pattern-not: |
+          <$EL ... dangerouslySetInnerHTML={{ __html: JSON.stringify(...).replaceAll("<", "\\u003c") }} ... />
+      - pattern-not:
+          patterns:
+            - pattern: |
+                <$EL ... dangerouslySetInnerHTML={{ __html: $CONST }} ... />
+            - metavariable-regex:
+                metavariable: $CONST
+                regex: ^[A-Z][A-Z0-9_]*$

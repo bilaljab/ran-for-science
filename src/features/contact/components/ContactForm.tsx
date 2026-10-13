@@ -12,6 +12,7 @@ import { Turnstile } from "@/components/ui/Turnstile";
 import { BrowserFingerprint } from "@/components/ui/BrowserFingerprint";
 import { FormTimingGuard } from "@/components/ui/FormTimingGuard";
 import { SuccessToast } from "@/components/ui/SuccessToast";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 
 export function ContactForm() {
   const t = useTranslations();
@@ -26,7 +27,7 @@ export function ContactForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-5">
-      <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
+      <input type="text" name={HONEYPOT_FIELD} className="hidden" tabIndex={-1} autoComplete="off" />
       <FormTimingGuard />
       <BrowserFingerprint />
 

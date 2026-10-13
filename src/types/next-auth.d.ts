@@ -11,6 +11,7 @@ declare module "next-auth" {
       id: string;
       passwordChangedAt?: number;
       sessionVersion?: number;
+      authTime?: number;
     } & DefaultSession["user"];
   }
 }
@@ -20,5 +21,6 @@ declare module "next-auth/jwt" {
     id?: string;
     passwordChangedAt?: number;
     sessionVersion?: number;
+    authTime?: number;
   }
 }

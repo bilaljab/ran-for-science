@@ -13,7 +13,8 @@ import { BrowserFingerprint } from "@/components/ui/BrowserFingerprint";
 import { FormTimingGuard } from "@/components/ui/FormTimingGuard";
 import { StarRating } from "@/features/workshops/components/StarRating";
 import { RadioChoice, SelectWithOther } from "@/features/workshops/components/ChoiceFields";
-import { BENEFIT_OPTIONS, CURRENT_STATUS_OPTIONS, EDUCATION_OPTIONS, HONEYPOT_FIELD } from "@/features/workshops/constants/options";
+import { BENEFIT_OPTIONS, CURRENT_STATUS_OPTIONS, EDUCATION_OPTIONS } from "@/features/workshops/constants/options";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 
 function SectionTitle({ step, children }: { step: number; children: string }) {
   return (

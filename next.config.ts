@@ -60,10 +60,14 @@ const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 // Resume uploads PUT directly from the browser to R2 (see src/lib/storage.ts
 // getResumeUploadUrl / src/features/jobs/actions/presign-resume.actions.ts) —
 // bypassing our own server so large files aren't subject to Vercel's inbound
-// serverless-function body-size cap. Wildcarded to cover both virtual-hosted
-// (<bucket>.<account>.r2.cloudflarestorage.com) and path-style addressing
-// without hardcoding the account ID into a build-time config file.
-const R2_ORIGIN = "https://*.r2.cloudflarestorage.com";
+// serverless-function body-size cap. Pinned to this account's host
+// (virtual-hosted <bucket>.<account>.r2... or path-style <account>.r2...) so
+// a compromised page can't exfiltrate to another R2 account; falls back to
+// the any-account wildcard only when R2_ACCOUNT_ID is unset (local dev, no R2).
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+const R2_ORIGIN = R2_ACCOUNT_ID
+  ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com https://*.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  : "https://*.r2.cloudflarestorage.com";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },

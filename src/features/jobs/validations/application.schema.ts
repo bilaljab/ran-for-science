@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ACCEPTED_RESUME_TYPES, MAX_RESUME_SIZE_BYTES } from "./application.constants";
+import { noNul, NO_NUL_MESSAGE } from "@/lib/validation";
 
 export { MAX_RESUME_SIZE_BYTES };
 
@@ -10,10 +11,10 @@ export const jobApplicationSchema = z.object({
     .min(1)
     .max(64)
     .regex(/^[a-z0-9]+$/i, "Invalid job id"),
-  fullName: z.string().trim().min(2).max(120),
+  fullName: z.string().trim().min(2).max(120).refine(noNul, NO_NUL_MESSAGE),
   email: z.string().trim().email(),
-  phone: z.string().trim().min(6).max(40),
-  coverNote: z.string().trim().max(4000).optional().or(z.literal("")),
+  phone: z.string().trim().min(6).max(40).refine(noNul, NO_NUL_MESSAGE),
+  coverNote: z.string().trim().max(4000).refine(noNul, NO_NUL_MESSAGE).optional().or(z.literal("")),
 });
 
 // Input to the presign action: gauntlet fields (same shape as the other

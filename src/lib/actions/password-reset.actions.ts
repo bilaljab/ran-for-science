@@ -23,7 +23,12 @@ const RESET_CONFIRM_WINDOW_MS = 15 * 60 * 1000;
 const requestSchema = z.object({ email: z.string().trim().email() });
 const resetSchema = z.object({
   token: z.string().trim().min(1),
-  password: z.string().min(12, "Password must be at least 12 characters long."),
+  password: z
+    .string()
+    .min(12, "كلمة المرور يجب أن تكون 12 حرفًا على الأقل.")
+    // bcrypt silently ignores everything past 72 BYTES (not characters), so
+    // longer passwords (Arabic letters are 2 bytes each) would be weaker than they look.
+    .refine((v) => Buffer.byteLength(v, "utf8") <= 72, "كلمة المرور طويلة جدًا (الحد الأقصى 72 بايت، أي نحو 36 حرفًا عربيًا)."),
 });
 
 const GENERIC_MESSAGE = "إذا كان البريد الإلكتروني مسجلاً لدينا، سنرسل رابط إعادة تعيين كلمة المرور إليه.";

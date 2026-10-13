@@ -58,22 +58,20 @@ export async function presignResumeUpload(rawInput: unknown): Promise<PresignRes
   if (!parsed.success) {
     return { success: false, message: GENERIC_FAIL_MESSAGE };
   }
-  const { jobId, formRenderedAt, fp, fpBot, mimeType } = parsed.data;
+  const { jobId, formRenderedAt, fpBot, mimeType, fileSize } = parsed.data;
 
-  const job = await prisma.jobPosting.findUnique({ where: { id: jobId }, select: { id: true, status: true } });
-  if (!job || job.status !== "PUBLISHED") {
-    return { success: false, message: GENERIC_FAIL_MESSAGE };
+  // Rate limit before the job lookup so unauthenticated callers can't drive
+  // unlimited DB reads by probing job ids.
+  if (!(await checkRateLimit(`presign:${ip}`, PRESIGN_LIMIT, PRESIGN_WINDOW_MS, { ip, source: "apply-presign", scope: "PUBLIC" }))) {
+    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
   }
 
-  if (
-    !(await checkRateLimit(`presign:${ip}`, PRESIGN_LIMIT, PRESIGN_WINDOW_MS, {
-      ip,
-      source: "apply-presign",
-      scope: "PUBLIC",
-      fingerprint: fp || undefined,
-    }))
-  ) {
-    return { success: false, message: "محاولات كثيرة جداً، الرجاء المحاولة لاحقاً." };
+  const job = await prisma.jobPosting.findUnique({
+    where: { id: jobId },
+    select: { id: true, status: true, closesAt: true },
+  });
+  if (!job || job.status !== "PUBLISHED" || (job.closesAt && job.closesAt < new Date())) {
+    return { success: false, message: GENERIC_FAIL_MESSAGE };
   }
 
   if (fpBot === "1") {
@@ -83,6 +81,6 @@ export async function presignResumeUpload(rawInput: unknown): Promise<PresignRes
   }
 
   const key = buildResumeKey(mimeType);
-  const uploadUrl = await getResumeUploadUrl(key);
+  const uploadUrl = await getResumeUploadUrl(key, fileSize);
   return { success: true, key, uploadUrl };
 }

@@ -15,6 +15,7 @@ import { Turnstile } from "@/components/ui/Turnstile";
 import { BrowserFingerprint } from "@/components/ui/BrowserFingerprint";
 import { FormTimingGuard } from "@/components/ui/FormTimingGuard";
 import { SuccessToast } from "@/components/ui/SuccessToast";
+import { HONEYPOT_FIELD } from "@/lib/honeypot";
 
 type Phase = "idle" | "presigning" | "uploading";
 
@@ -86,7 +87,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     setPhase("presigning");
     const presignResult = await presignResumeUpload({
       jobId,
-      website: snapshot.get("website"),
+      website: snapshot.get(HONEYPOT_FIELD),
       formRenderedAt: snapshot.get("formRenderedAt"),
       fp: snapshot.get("fp"),
       fpBot: snapshot.get("fpBot"),
@@ -161,7 +162,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
   return (
     <form ref={formRef} onSubmit={handleSubmit} action={formAction} className="flex flex-col gap-5">
       <input type="hidden" name="jobId" value={jobId} />
-      <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
+      <input type="text" name={HONEYPOT_FIELD} className="hidden" tabIndex={-1} autoComplete="off" />
       <FormTimingGuard />
       <BrowserFingerprint />
 

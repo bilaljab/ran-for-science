@@ -1,0 +1,33 @@
+rules:
+  - id: no-raw-auth-in-admin
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      Raw `$AUTH()` imported from "@/auth" must not be used in admin pages, admin API routes or Server Actions.
+      It only verifies the JWT signature and never re-checks the DB, so a session revoked by a password change
+      or "log out everywhere" stays valid until the token expires (a previously fixed session-bypass bug). Use
+      `requireAdminPage()` (pages), `requireAdmin()` (actions/routes) or `getValidAdminSession()` from
+      src/lib/require-admin.ts, the only file allowed to call auth().
+    metadata:
+      category: security
+      cwe: "CWE-613: Insufficient Session Expiration"
+      confidence: HIGH
+    paths:
+      include:
+        - "/src/app/admin/"
+        - "/src/app/api/admin/"
+        - "/src/features/**/actions/"
+        - "/src/lib/actions/"
+      exclude:
+        - "/src/lib/require-admin.ts"
+    pattern-either:
+      - patterns:
+          - pattern-inside: |
+              import { auth } from "@/auth";
+              ...
+          - pattern: auth(...)
+      - patterns:
+          - pattern-inside: |
+              import { auth as $AUTH } from "@/auth";
+              ...
+          - pattern: $AUTH(...)

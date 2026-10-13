@@ -33,6 +33,11 @@ async function main() {
     throw new Error("SEED_ADMIN_PASSWORD must be at least 12 characters long.");
   }
 
+  // bcrypt only uses the first 72 BYTES; same cap as the password-reset schema.
+  if (Buffer.byteLength(adminPassword, "utf8") > 72) {
+    throw new Error("SEED_ADMIN_PASSWORD must be at most 72 bytes (bcrypt truncates beyond that).");
+  }
+
   const passwordHash = await hashPassword(adminPassword);
   const now = new Date();
 

@@ -1,0 +1,30 @@
+rules:
+  - id: admin-page-must-require-admin
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      Admin page `$F` must call `await requireAdminPage()` as its FIRST statement. The (dashboard) layout's
+      auth check does NOT protect page data: Next renders layout and page concurrently, so a page's queries
+      run and get serialized into the response even when the layout redirects. Any await or data call placed
+      before requireAdminPage() leaks admin data to unauthenticated visitors (see src/lib/require-admin.ts).
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      confidence: HIGH
+    paths:
+      include:
+        - "/src/app/admin/(dashboard)/**/page.tsx"
+    patterns:
+      - pattern-either:
+          - pattern: export default async function $F(...) { ... }
+          - pattern: export default function $F(...) { ... }
+      - pattern-not: |
+          export default async function $F(...) {
+            await requireAdminPage();
+            ...
+          }
+      - pattern-not: |
+          export default async function $F(...) {
+            const $S = await requireAdminPage();
+            ...
+          }

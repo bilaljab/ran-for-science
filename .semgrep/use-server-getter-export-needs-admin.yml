@@ -1,0 +1,44 @@
+rules:
+  - id: use-server-getter-export-needs-admin
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      Exported Server Action `$F` is named like a data getter (get/list/find/fetch/read/search/load) but does not
+      call `requireAdmin()` or `guardAdmin(...)` as its first statement. Every export of a "use server" file is a
+      public endpoint, so a reader placed here lets anyone pull rows (PII) with a direct POST. Move data readers
+      to features/*/data/ (server-only, not exported from a "use server" file), or guard the action.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      confidence: MEDIUM
+    paths:
+      exclude:
+        - "/src/generated/"
+    patterns:
+      - pattern-inside: |
+          "use server";
+          ...
+      - pattern: export async function $F(...) { ... }
+      - metavariable-regex:
+          metavariable: $F
+          regex: ^(get|list|find|fetch|read|search|load)([A-Z0-9_].*)?$
+      - pattern-not: |
+          export async function $F(...) {
+            await requireAdmin();
+            ...
+          }
+      - pattern-not: |
+          export async function $F(...) {
+            const $S = await requireAdmin();
+            ...
+          }
+      - pattern-not: |
+          export async function $F(...) {
+            await guardAdmin(...);
+            ...
+          }
+      - pattern-not: |
+          export async function $F(...) {
+            const $S = await guardAdmin(...);
+            ...
+          }

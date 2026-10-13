@@ -1,6 +1,8 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import "server-only";
 import { auth } from "@/auth";
+import { ADMIN_SESSION_MAX_AGE_S } from "@/auth.config";
 import { prisma } from "@/lib/prisma";
 import { getClientIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -14,13 +16,20 @@ import { logger } from "@/lib/logger";
  * side effect of password changes; sessionVersion is the fast, explicit
  * "log out everywhere" primitive (see lib/actions/admin-session.actions.ts's
  * revokeAllSessions()) that doesn't require picking a new password.
+ *
+ * Also enforces an ABSOLUTE lifetime: the JWT cookie is re-issued with a fresh
+ * expiry on every read, so an actively used (or stolen and replayed) cookie
+ * would otherwise never age out. `authTime` is stamped at sign-in only; tokens
+ * minted before it existed are treated as stale (one forced re-login).
  */
 async function isSessionStale(
   userId: string,
   tokenPasswordChangedAt: number | undefined,
-  tokenSessionVersion: number | undefined
+  tokenSessionVersion: number | undefined,
+  tokenAuthTime: number | undefined
 ): Promise<boolean> {
   if (typeof tokenPasswordChangedAt !== "number" || typeof tokenSessionVersion !== "number") return true;
+  if (typeof tokenAuthTime !== "number" || Date.now() - tokenAuthTime > ADMIN_SESSION_MAX_AGE_S * 1000) return true;
 
   const admin = await prisma.adminUser.findUnique({
     where: { id: userId },
@@ -42,7 +51,14 @@ async function isSessionStale(
 export const getValidAdminSession = cache(async () => {
   const session = await auth();
   if (!session?.user) return null;
-  if (await isSessionStale(session.user.id, session.user.passwordChangedAt, session.user.sessionVersion)) {
+  if (
+    await isSessionStale(
+      session.user.id,
+      session.user.passwordChangedAt,
+      session.user.sessionVersion,
+      session.user.authTime
+    )
+  ) {
     const ip = await getClientIp();
     logger.warn({ ip }, "auth_stale_session_rejected");
     return null;

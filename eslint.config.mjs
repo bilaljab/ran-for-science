@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Semgrep rule fixtures (deliberately "bad" code), checked by `npm run semgrep:test`.
+    ".semgrep/**",
   ]),
 ]);
 

@@ -2,14 +2,20 @@ import type { NextAuthConfig } from "next-auth";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+/** Absolute admin session lifetime (seconds), measured from sign-in. */
+export const ADMIN_SESSION_MAX_AGE_S = 8 * 60 * 60;
+
 export const authConfig: NextAuthConfig = {
   pages: {
     signIn: "/admin/login",
   },
   session: {
     strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 hours — admin sessions shouldn't outlive a workday
-    updateAge: 60 * 60, // refresh the cookie at most once per hour of activity
+    // Sliding window only: @auth/core's JWT branch re-signs the cookie with a
+    // fresh expiry on EVERY session read and ignores updateAge (that throttle
+    // is database-strategy only). The hard 8h cap is `authTime`, checked in
+    // require-admin.ts.
+    maxAge: ADMIN_SESSION_MAX_AGE_S,
   },
   // Explicit rather than relying on NextAuth's implicit defaults.
   cookies: {
@@ -41,6 +47,7 @@ export const authConfig: NextAuthConfig = {
         token.email = user.email;
         token.passwordChangedAt = user.passwordChangedAt;
         token.sessionVersion = user.sessionVersion;
+        token.authTime = Date.now(); // sign-in only, never refreshed (see require-admin.ts)
       }
       return token;
     },
@@ -49,6 +56,7 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         session.user.passwordChangedAt = token.passwordChangedAt as number | undefined;
         session.user.sessionVersion = token.sessionVersion as number | undefined;
+        session.user.authTime = token.authTime as number | undefined;
       }
       return session;
     },

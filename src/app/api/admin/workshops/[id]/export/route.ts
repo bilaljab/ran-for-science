@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
+import { attachmentDisposition } from "@/lib/content-disposition";
 import { getResponses, getWorkshopForAdmin } from "@/features/workshops/data/workshops.data";
 import { toCsv } from "@/features/workshops/lib/csv";
 
@@ -25,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   if (
-    !(await checkRateLimit(`download:${session.user.id}`, EXPORT_LIMIT, EXPORT_WINDOW_MS, {
+    !(await checkRateLimit(`workshop-export:${session.user.id}`, EXPORT_LIMIT, EXPORT_WINDOW_MS, {
       ip,
       source: "workshop-export",
       scope: "ADMIN",
@@ -61,7 +62,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new NextResponse(`﻿${csv}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${workshop.slug}-responses.csv"`,
+      "Content-Disposition": attachmentDisposition(`${workshop.slug}-responses.csv`),
     },
   });
 }

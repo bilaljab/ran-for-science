@@ -1,3 +1,4 @@
+import "server-only";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import type { FingerprintScope } from "@/generated/prisma/enums";
@@ -10,10 +11,11 @@ const MAX_FINGERPRINT_LENGTH = 128;
  * request's fingerprint is read from form data, checked against this table,
  * and discarded — never written here. A row only ever gets created when a
  * caller has ALREADY confirmed real abuse via an existing threshold
- * elsewhere (a login lockout engaging in lib/login-attempts.ts, or an
- * IP-reputation block in lib/ip-reputation.ts) — so a single call here
- * blocks immediately, rather than requiring a second independent strike
- * count at this layer too.
+ * elsewhere (a login lockout engaging in lib/login-attempts.ts) — so a
+ * single call here blocks immediately, rather than requiring a second
+ * independent strike count at this layer too. Public-form rate-limit/IP-
+ * reputation strikes deliberately never get here: `fp` is client-supplied,
+ * so a third party could otherwise poison someone else's fingerprint.
  *
  * The block is never permanent: `expiresAt` is (re)set to 30 days out on
  * every call, so continued abuse keeps pushing it forward, but a one-time

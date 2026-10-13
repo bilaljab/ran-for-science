@@ -8,3 +8,10 @@ import { z } from "zod";
 // database, instead of letting Prisma throw an uncaught error for a
 // not-found id.
 export const idSchema = z.string().trim().min(1).max(64).regex(/^[a-z0-9]+$/i, "Invalid id");
+
+// Postgres text columns can't store U+0000: the insert throws "invalid byte
+// sequence for encoding UTF8: 0x00" (an unhandled 500). Zod's string checks
+// accept it, so every free-text field in a public schema chains
+// `.refine(noNul, NO_NUL_MESSAGE)`.
+export const noNul = (value: string) => !value.includes("\u0000");
+export const NO_NUL_MESSAGE = "Invalid characters";

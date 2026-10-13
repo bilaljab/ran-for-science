@@ -1,3 +1,4 @@
+import "server-only";
 import { randomUUID } from "crypto";
 import path from "path";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
@@ -82,35 +83,25 @@ export function buildResumeKey(declaredMimeType: string): string {
  * trust boundary either way (detectResumeContentType is), so there's no
  * security benefit to that fragility.
  *
- * Known, accepted risk (not fixable from this signature alone): a presigned
- * PUT URL — unlike a presigned POST policy — has no mechanism to bind a
- * max Content-Length; SigV4 can only sign an EXACT byte count, which would
- * reject every upload that isn't precisely that size, so no useful bound
- * can be enforced here. This means a caller that obtains a presigned key
- * (rate-limited to 10 per 10 minutes per IP — see presign-resume.actions.ts)
- * can PUT an arbitrarily large object directly to R2 without ever calling
- * submitJobApplication, which is the only place that checks
- * MAX_RESUME_SIZE_BYTES and deletes on failure. Exposure is bounded by the
- * presign rate limit, the 10-minute URL expiry, and the attacker's own
- * upload bandwidth — not by anything at the storage layer. This does NOT
- * expose data (downloads are always proxied through the authenticated
- * admin route, which forces a fixed response Content-Type regardless of
- * what's in the bucket) — the exposure is storage-cost/DoS, not
- * confidentiality. Recommended mitigation outside application code: add an
- * R2 lifecycle rule (Cloudflare dashboard) to auto-delete objects older
- * than a few hours, cleaning up anything that was never confirmed via
- * submitJobApplication. Switching to presigned POST with a
- * content-length-range condition would enforce this at the protocol level
- * instead, but that's a bigger change (rewrites the upload call in
- * ApplyForm.tsx and the dev-only PUT stand-in route to match) than this
- * pass covers.
+ * Known, accepted risk (narrowed, not eliminated): the exact `fileSize` the
+ * client declared is signed into the URL as ContentLength, so R2 rejects a
+ * PUT body of any other size (a presigned PUT can only sign an EXACT byte
+ * count, not a range). A caller can still upload up to the declared size
+ * (capped at MAX_RESUME_SIZE_BYTES by presignResumeInputSchema) without ever
+ * calling submitJobApplication, which is the only place that deletes on
+ * failure. Exposure is bounded by that cap, the presign rate limit (10 per 10
+ * minutes per IP), the 10-minute URL expiry and the attacker's bandwidth. It
+ * does NOT expose data (downloads are proxied through the authenticated admin
+ * route with a fixed response Content-Type) — the exposure is storage cost.
+ * Recommended mitigation outside application code: an R2 lifecycle rule
+ * (Cloudflare dashboard) auto-deleting objects older than a few hours.
  */
-export async function getResumeUploadUrl(key: string): Promise<string> {
+export async function getResumeUploadUrl(key: string, fileSize: number): Promise<string> {
   if (r2Configured) {
     const { PutObjectCommand } = await import("@aws-sdk/client-s3");
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
     const client = await getS3Client();
-    const command = new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key });
+    const command = new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, ContentLength: fileSize });
     return getSignedUrl(client, command, { expiresIn: PRESIGN_EXPIRY_SECONDS });
   }
 

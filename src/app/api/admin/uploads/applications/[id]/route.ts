@@ -6,6 +6,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { idSchema } from "@/lib/validation";
 import { logAdminAction } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
+import { attachmentDisposition } from "@/lib/content-disposition";
 
 // Authenticated-only, so the threat here isn't brute force — it's a
 // compromised/malicious session hammering downloads to run up storage
@@ -26,7 +27,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   if (
-    !(await checkRateLimit(`download:${session.user.id}`, DOWNLOAD_LIMIT, DOWNLOAD_WINDOW_MS, {
+    !(await checkRateLimit(`resume-download:${session.user.id}`, DOWNLOAD_LIMIT, DOWNLOAD_WINDOW_MS, {
       ip,
       source: "resume-download",
       scope: "ADMIN",
@@ -66,7 +67,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(application.resumeFileName)}"`,
+      "Content-Disposition": attachmentDisposition(application.resumeFileName),
     },
   });
 }

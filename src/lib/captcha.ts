@@ -1,3 +1,4 @@
+import "server-only";
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { logger } from "@/lib/logger";
 
@@ -59,7 +60,7 @@ export async function verifyCaptcha(token: unknown, ip: string): Promise<boolean
 
   try {
     const body = new URLSearchParams({ secret, response: token, remoteip: ip });
-    const res = await fetch(VERIFY_URL, { method: "POST", body });
+    const res = await fetch(VERIFY_URL, { method: "POST", body, signal: AbortSignal.timeout(5000) });
     const data: { success?: boolean } = await res.json();
     return data.success === true;
   } catch (error) {

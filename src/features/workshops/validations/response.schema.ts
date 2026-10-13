@@ -6,10 +6,13 @@ import {
   MAX_RATING,
   OTHER_OPTION,
 } from "@/features/workshops/constants/options";
+import { noNul, NO_NUL_MESSAGE } from "@/lib/validation";
 
 const required = "هذا الحقل مطلوب";
-const text = (max: number) => z.string({ error: required }).trim().min(1, required).max(max, `الحد الأقصى ${max} حرفاً`);
-const optionalText = (max: number) => z.string().trim().max(max, `الحد الأقصى ${max} حرفاً`).optional();
+const text = (max: number) =>
+  z.string({ error: required }).trim().min(1, required).max(max, `الحد الأقصى ${max} حرفاً`).refine(noNul, NO_NUL_MESSAGE);
+const optionalText = (max: number) =>
+  z.string().trim().max(max, `الحد الأقصى ${max} حرفاً`).refine(noNul, NO_NUL_MESSAGE).optional();
 const choice = <T extends readonly [string, ...string[]]>(options: T) => z.enum(options, { error: required });
 const rating = z.coerce.number({ error: required }).int().min(1, required).max(MAX_RATING, required);
 

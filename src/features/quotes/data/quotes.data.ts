@@ -1,3 +1,4 @@
+import "server-only";
 import { prisma } from "@/lib/prisma";
 import { ServiceCategory, QuoteStatus } from "@/generated/prisma/enums";
 

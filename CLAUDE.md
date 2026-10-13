@@ -26,6 +26,7 @@
 - `npm run lint` — ESLint
 - `npx tsc --noEmit` — type-check only
 - `npm run knip` — dead-code/unused-export detection
+- `npm run semgrep:guards` — Semgrep (needs the `semgrep` CLI) security-convention guards in `.semgrep/` (admin pages/actions/routes must call `requireAdminPage()`/`requireAdmin()`/`getValidAdminSession()` first, no raw `auth()`, no unsafe raw SQL, no dynamic `dangerouslySetInnerHTML`, `"use server"` exports); must report 0 findings. `npm run semgrep:test` runs the rule fixtures (a new public action file must be added to the exclude list in `.semgrep/admin-action-must-require-admin.yml`)
 - `npx prisma migrate dev` — create/apply a migration **locally only**
 - `npx prisma db seed` — seed local dev DB (hard-blocked when `NODE_ENV=production`)
 
@@ -49,7 +50,8 @@
 - Server Actions return a shared `ActionState` shape (`src/lib/actions/types.ts`), consumed via `useActionState`; validation is Zod schemas under each feature's `validations/`
 - Admin routes/actions use `getValidAdminSession()` / `requireAdmin()` from `src/lib/require-admin.ts` — never raw `auth()` (a previously-fixed session-bypass bug)
 - Every `src/app/admin/(dashboard)/**/page.tsx` must call `await requireAdminPage()` (`src/lib/require-admin.ts`) as its FIRST statement — the layout's check does not stop a page's queries from running and being serialized into the response
-- Public forms (contact, quote, apply) each carry: a honeypot field (`website`), a timing-trap field (`formRenderedAt`), a fingerprint pair (`fp`/`fpBot`), and Cloudflare Turnstile
+- Public forms (contact, quote, apply) each carry: a honeypot field (`HONEYPOT_FIELD` = `extra_info`, `src/lib/honeypot.ts` — never `website`/`url`, browsers autofill those), a timing-trap field (`formRenderedAt`), a fingerprint pair (`fp`/`fpBot`), and Cloudflare Turnstile
+- Admin sessions have an ABSOLUTE 8h cap: @auth/core's JWT strategy re-issues the cookie on every read (`updateAge` is ignored), so `authTime` is stamped at sign-in only (`auth.config.ts`) and enforced in `require-admin.ts` `isSessionStale`. Password reset caps passwords at 72 UTF-8 bytes (bcrypt truncation); login still accepts up to 200 chars so old passwords work
 - One-time-token flows (password reset, email verification) claim atomically via `updateMany({ where: { usedAt: null } })` before any slow operation (bcrypt) — avoids a TOCTOU race
 - Admin login lockouts: the account-wide `login-email:<email>` key is capped at 60s (`ACCOUNT_LOCK_CAP_MS`) and never escalates the fingerprint, because anyone knowing an admin's email can feed it failures from any IP; the 5min/30min/1h tiers apply only to `login-email-ip:` and `login-ip:` keys (`lib/lockout-tiers.ts`)
 - Structured logging goes through `src/lib/logger.ts` (pino → stdout JSON), not raw `console.*`
@@ -58,7 +60,7 @@
 
 - Workshop certificates: attendance is proven ONLY by the time-boxed registration window (`Workshop.opensAt`/`closesAt`, opened by the admin's button, default 10 min), enforced server-side in `features/workshops/actions/submit.actions.ts` via `getRegistrationState` (`lib/registration-window.ts`, tested). The certificate is drawn client-side on a canvas over `public/certificate/template.jpg`; all design coordinates live in `features/workshops/lib/certificate-config.ts`. `WorkshopResponse.id` is the unguessable token in the certificate URL — keep it a cuid
 - Workshop public page speed: `/w/[slug]` reads the workshop via `getPublicWorkshop` (`unstable_cache`, tag `WORKSHOPS_TAG`, dates revived from ISO strings); every admin workshop mutation calls `updateTag(WORKSHOPS_TAG)`. The submit action deliberately reads the uncached row (`getWorkshopBySlug`) for the window check. Admin actions write the audit row via `after()`, and open/close the window with ONE raw SQL statement using the database clock (`now()`), not app time
-- The workshop form's honeypot is `HONEYPOT_FIELD` (`extra_info`, in `features/workshops/constants/options.ts`), not `website` — browsers autofill hidden `website`/`url` fields. Unlike contact/quote/apply, blocked workshop submits return a VISIBLE error (not a fake success) so a false positive never leaves a real student stuck
+- Unlike contact/quote/apply, blocked workshop submits return a VISIBLE error (not a fake success) so a false positive never leaves a real student stuck. The workshop submit also passes no `reputation` arg to `checkRateLimit` (its 20/10min limit is NAT-sized): IP reputation (`ip-rep:<scope>:<ip>`) is per scope and never writes a persistent fingerprint block for PUBLIC forms (`fp` is client-supplied)
 - Unit tests exist only for pure workshop logic: `npx tsx --test src/features/workshops/lib/*.test.ts` (node:test, no framework)
 - Hosting/DB: Neon Postgres in `eu-central-1` (Frankfurt, pooled endpoint); `vercel.json` pins functions to `fra1` next to it (Hobby plan = one region). Measured before the move: ~1s per DB query from `iad1`. Treat every Postgres round trip as expensive: parallelise independent queries (`Promise.all`), cache public reads, avoid read-then-write when one SQL statement works
 

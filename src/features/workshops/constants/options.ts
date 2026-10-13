@@ -8,10 +8,6 @@ export const BENEFIT_OPTIONS = ["نعم", "إلى حد ما", "لا", OTHER_OPTI
 
 export const MAX_RATING = 5;
 
-// Honeypot input name. Deliberately NOT "website"/"url"/"email"-like: browsers
-// autofill those hidden fields from the user's profile, which would block a real student.
-export const HONEYPOT_FIELD = "extra_info";
-
 export const WHATSAPP_CHANNEL_URL = "https://whatsapp.com/channel/0029VbDAHYxLo4haL6pHFe2f";
 export const WHATSAPP_CHAT_URL = "https://wa.me/966560464352";
 export const CONTACT_EMAIL = "Ran.for.science@gmail.com";

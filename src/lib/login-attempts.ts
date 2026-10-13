@@ -1,3 +1,4 @@
+import "server-only";
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { recordSuspiciousFingerprint } from "@/lib/fingerprint";
 import { incrementCounter, getCounter, setLockedUntil, resetCounter } from "@/lib/abuse-counter";

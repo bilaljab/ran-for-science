@@ -11,7 +11,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "knip": "knip"
+    "knip": "knip",
+    "semgrep:guards": "semgrep --config .semgrep/ src/ --metrics=off --error",
+    "semgrep:test": "cd .semgrep && semgrep --test . --metrics=off"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1077.0",

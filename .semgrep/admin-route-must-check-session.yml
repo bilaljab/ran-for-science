@@ -1,0 +1,36 @@
+rules:
+  - id: admin-route-must-check-session
+    languages: [typescript]
+    severity: HIGH
+    message: >-
+      Admin route handler `$METHOD` must call `getValidAdminSession()` (and reject when it is null) or
+      `requireAdmin()` as its FIRST statement. proxy.ts only checks that a session cookie exists; it does not
+      validate the JWT against passwordChangedAt/sessionVersion. Without this check a revoked or stale session,
+      or a forged cookie, can reach admin data (applicant PII, exports) through this endpoint.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      confidence: HIGH
+    paths:
+      include:
+        - "/src/app/api/admin/**/route.ts"
+    patterns:
+      - pattern: export async function $METHOD(...) { ... }
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: ^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$
+      - pattern-not: |
+          export async function $METHOD(...) {
+            const $S = await getValidAdminSession();
+            ...
+          }
+      - pattern-not: |
+          export async function $METHOD(...) {
+            await requireAdmin();
+            ...
+          }
+      - pattern-not: |
+          export async function $METHOD(...) {
+            const $S = await requireAdmin();
+            ...
+          }
