@@ -10,10 +10,10 @@
 
 ## 2. Tech Stack
 
-- Next.js 16.2.9 (App Router) · React 19.2.4 / react-dom 19.2.4 · TypeScript 5.9.3 (strict)
+- Next.js 16.4.0 (App Router) · React 19.2.4 / react-dom 19.2.4 · TypeScript 5.9.3 (strict)
 - Tailwind CSS v4 (`^4`) · next-intl 4.13.1 · framer-motion 12.42.2 · zod 4.4.3
 - Prisma 7.8.0 + `@prisma/client` 7.8.0 + `@prisma/adapter-pg` 7.8.0 · PostgreSQL
-- next-auth (Auth.js) `5.0.0-beta.31` · Sentry (`@sentry/nextjs` 10.65.0) · pino 10.3.1
+- next-auth (Auth.js) `5.0.0-beta.32` · Sentry (`@sentry/nextjs` 10.65.0) · pino 10.3.1
 - Resend 6.16.0 (email) · AWS SDK S3 client (Cloudflare R2 storage) · Cloudflare Turnstile
 
 ⚠️ **Next 16, Tailwind v4, Auth.js v5, and Prisma 7 all differ meaningfully from older versions a model might assume from training data** (e.g. middleware is renamed "Proxy", Tailwind has no JS config file, Prisma's generator is `"prisma-client"` not `"prisma-client-js"`) — see `AGENTS.md` and check `node_modules/next/dist/docs/` before assuming an API.
@@ -51,6 +51,7 @@
 - Every `src/app/admin/(dashboard)/**/page.tsx` must call `await requireAdminPage()` (`src/lib/require-admin.ts`) as its FIRST statement — the layout's check does not stop a page's queries from running and being serialized into the response
 - Public forms (contact, quote, apply) each carry: a honeypot field (`website`), a timing-trap field (`formRenderedAt`), a fingerprint pair (`fp`/`fpBot`), and Cloudflare Turnstile
 - One-time-token flows (password reset, email verification) claim atomically via `updateMany({ where: { usedAt: null } })` before any slow operation (bcrypt) — avoids a TOCTOU race
+- Admin login lockouts: the account-wide `login-email:<email>` key is capped at 60s (`ACCOUNT_LOCK_CAP_MS`) and never escalates the fingerprint, because anyone knowing an admin's email can feed it failures from any IP; the 5min/30min/1h tiers apply only to `login-email-ip:` and `login-ip:` keys (`lib/lockout-tiers.ts`)
 - Structured logging goes through `src/lib/logger.ts` (pino → stdout JSON), not raw `console.*`
 - CSP/security headers are centralized in `next.config.ts` — not middleware or a meta tag
 - Rate limiting/lockout state is persisted in Postgres (`AbuseCounter` table) — not in-memory — because Vercel's serverless model runs multiple instances with no shared memory

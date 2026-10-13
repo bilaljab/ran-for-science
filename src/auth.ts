@@ -20,6 +20,8 @@ import { logger } from "@/lib/logger";
 // per-tier lockouts in login-attempts.ts are the primary defense.
 const LOGIN_LIMIT = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+// Max lock on the account-wide (email-only) key; see the layers comment in authorize().
+const ACCOUNT_LOCK_CAP_MS = 60 * 1000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -87,16 +89,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         //   - progressive account lockout (by email): credential stuffing —
         //     the same account hammered from many rotating IPs, which a
         //     per-IP limiter alone would never see coming from one source.
+        //     Capped at 60s (ACCOUNT_LOCK_CAP_MS): anyone who knows the email
+        //     can trigger it, so it must not escalate into a lockout-DoS.
+        //   - progressive email+ip lockout: the full 60s..1h escalation, but
+        //     keyed per source so an attacker only ever locks out themselves.
         //   - progressive IP lockout (by bare IP): password spraying — many
         //     different accounts hammered from one source, which a per-
         //     ip+email limiter alone would never trip since each account
         //     only sees one or two attempts.
         const emailLockKey = `login-email:${normalizedEmail}`;
+        const emailIpLockKey = `login-email-ip:${normalizedEmail}:${ip}`;
         const ipLockKey = `login-ip:${ip}`;
 
         const lockedMs = Math.max(
-          await getLockoutRemainingMs(emailLockKey),
-          await getLockoutRemainingMs(ipLockKey)
+          ...(await Promise.all([
+            getLockoutRemainingMs(emailLockKey),
+            getLockoutRemainingMs(emailIpLockKey),
+            getLockoutRemainingMs(ipLockKey),
+          ]))
         );
         if (lockedMs > 0) {
           logAbuseEvent({ type: "login_rejected_locked", ip, detail: `email=${normalizedEmail}` });
@@ -126,14 +136,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!isValid) {
           logger.warn({ ip, email }, "auth_login_failed_bad_password");
-          await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+          await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp, ACCOUNT_LOCK_CAP_MS);
+          await recordLoginFailure(emailIpLockKey, ip, `email+ip email=${normalizedEmail}`, "ADMIN", fp);
           await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
 
         if (!admin.emailVerified) {
           logger.warn({ ip, email }, "auth_login_blocked_email_unverified");
-          await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+          await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp, ACCOUNT_LOCK_CAP_MS);
+          await recordLoginFailure(emailIpLockKey, ip, `email+ip email=${normalizedEmail}`, "ADMIN", fp);
           await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
           return null;
         }
@@ -145,13 +157,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               : false;
           if (!isCodeValid) {
             logger.warn({ ip, email }, "auth_login_blocked_invalid_mfa");
-            await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp);
+            await recordLoginFailure(emailLockKey, ip, `account email=${normalizedEmail}`, "ADMIN", fp, ACCOUNT_LOCK_CAP_MS);
+            await recordLoginFailure(emailIpLockKey, ip, `email+ip email=${normalizedEmail}`, "ADMIN", fp);
             await recordLoginFailure(ipLockKey, ip, "ip-spray", "ADMIN", fp);
             return null;
           }
         }
 
         await recordLoginSuccess(emailLockKey);
+        await recordLoginSuccess(emailIpLockKey);
         await recordLoginSuccess(ipLockKey);
 
         return {

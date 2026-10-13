@@ -1,6 +1,7 @@
 import { logAbuseEvent } from "@/lib/abuse-log";
 import { recordSuspiciousFingerprint } from "@/lib/fingerprint";
 import { incrementCounter, getCounter, setLockedUntil, resetCounter } from "@/lib/abuse-counter";
+import { lockMsFor } from "@/lib/lockout-tiers";
 import type { FingerprintScope } from "@/generated/prisma/enums";
 
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
@@ -12,23 +13,6 @@ const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 // escalation for the second tier and up.
 const FINGERPRINT_ESCALATION_THRESHOLD = 8;
 
-// Each step's lock duration applies once the failure count reaches it, and
-// stays in effect (re-triggered on every subsequent failure) until the
-// failure count resets after a clean window. This is what makes repeated
-// abuse increasingly expensive instead of a flat wait-and-retry.
-const LOCKOUT_STEPS: { afterFailures: number; lockMs: number }[] = [
-  { afterFailures: 5, lockMs: 60 * 1000 },
-  { afterFailures: 8, lockMs: 5 * 60 * 1000 },
-  { afterFailures: 12, lockMs: 30 * 60 * 1000 },
-  { afterFailures: 20, lockMs: 60 * 60 * 1000 },
-];
-
-function currentLockMs(failures: number): number {
-  let lock = 0;
-  for (const step of LOCKOUT_STEPS) if (failures >= step.afterFailures) lock = step.lockMs;
-  return lock;
-}
-
 /**
  * Progressive account/IP lockout, independent of and in addition to the
  * fixed-window per-source rate limiter in lib/rate-limit.ts. Keying this by
@@ -37,6 +21,12 @@ function currentLockMs(failures: number): number {
  * (see auth.ts) catches password-spraying that rotates through many emails
  * from one source — neither pattern trips a same-key fixed-window limiter
  * on its own.
+ *
+ * The account-wide email key is capped (`maxLockMs`) at the mildest tier,
+ * because anyone who knows an admin's email can feed it failures from any
+ * IP; letting it escalate would be a cheap lockout-DoS against that admin.
+ * The long tiers live on email+IP and bare-IP keys, which only the attacking
+ * source can escalate for itself.
  */
 export async function getLockoutRemainingMs(key: string): Promise<number> {
   const state = await getCounter(`login:${key}`);
@@ -61,15 +51,18 @@ export async function recordLoginFailure(
   ip: string,
   label: string,
   scope: FingerprintScope,
-  fingerprint?: string
+  fingerprint?: string,
+  maxLockMs?: number
 ): Promise<void> {
   const { count: failures } = await incrementCounter(`login:${key}`, FAILURE_WINDOW_MS);
 
-  const lockMs = currentLockMs(failures);
+  const lockMs = lockMsFor(failures, maxLockMs);
   if (lockMs > 0) {
     await setLockedUntil(`login:${key}`, new Date(Date.now() + lockMs));
     logAbuseEvent({ type: "login_lockout", ip, detail: `${label} failures=${failures} lockMs=${lockMs}` });
-    if (fingerprint && failures >= FINGERPRINT_ESCALATION_THRESHOLD) {
+    // Never on a capped (account-wide) key: anyone can feed it failures, so
+    // they say nothing about this device and would punish the real admin.
+    if (fingerprint && maxLockMs === undefined && failures >= FINGERPRINT_ESCALATION_THRESHOLD) {
       void recordSuspiciousFingerprint(fingerprint, scope, `login_lockout ${label}`);
     }
   }

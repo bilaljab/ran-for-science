@@ -1,7 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { readResumeFile, detectResumeContentType, deleteResumeFile } from "@/lib/storage";
+import path from "path";
+import { readResumeFile, detectResumeContentType, deleteResumeFile, storeValidatedResume } from "@/lib/storage";
+import { sanitizeResumeFileName } from "@/features/jobs/lib/resume-file-name";
 import { jobApplicationSchema, resumeRefSchema, MAX_RESUME_SIZE_BYTES } from "@/features/jobs/validations/application.schema";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
@@ -83,9 +85,12 @@ export async function submitJobApplication(
   // the old saveResumeFile did before creating a DB row.
   let buffer: Buffer;
   try {
-    buffer = await readResumeFile(key);
+    // Size is enforced on the GetObject response before the body is read, so
+    // `buffer` is the complete object and is exactly what gets validated below.
+    buffer = await readResumeFile(key, MAX_RESUME_SIZE_BYTES);
   } catch (error) {
     logger.error({ err: error }, "apply_resume_readback_failed");
+    await deleteResumeFile(key).catch((e) => logger.error({ err: e }, "apply_delete_unreadable_upload_failed"));
     return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 
@@ -105,17 +110,29 @@ export async function submitJobApplication(
     return { success: false, errors: { resume: [INVALID_RESUME_MESSAGE] } };
   }
 
-  await prisma.jobApplication.create({
-    data: {
-      jobId: job.id,
-      fullName: parsed.data.fullName,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      coverNote: parsed.data.coverNote || null,
-      resumeUrl: key,
-      resumeFileName: fileName,
-    },
-  });
+  // The presigned PUT URL for `key` stays valid for 10 minutes, so the
+  // uploader could overwrite it after the checks above. Persist the exact
+  // validated bytes under a new, never-presigned key instead (a server-side
+  // copy from `key` would reintroduce that race), and drop the upload key.
+  const storedKey = await storeValidatedResume(buffer, detectedMime);
+  await deleteResumeFile(key).catch((error) => logger.error({ err: error }, "apply_delete_upload_key_failed"));
+
+  try {
+    await prisma.jobApplication.create({
+      data: {
+        jobId: job.id,
+        fullName: parsed.data.fullName,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        coverNote: parsed.data.coverNote || null,
+        resumeUrl: storedKey,
+        resumeFileName: sanitizeResumeFileName(fileName, path.extname(storedKey)),
+      },
+    });
+  } catch (error) {
+    await deleteResumeFile(storedKey).catch((e) => logger.error({ err: e }, "apply_delete_orphan_resume_failed"));
+    throw error;
+  }
 
   return { success: true };
 }

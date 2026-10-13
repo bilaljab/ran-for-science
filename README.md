@@ -2,7 +2,7 @@
 
 A bilingual (Arabic/English) platform that connects job seekers with employers in the scientific, environmental, industrial, and health sectors — and helps companies in those sectors get expert consulting and compliance support.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16.4.0-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwindcss)
 ![Prisma](https://img.shields.io/badge/Prisma-7.8-2D3748?logo=prisma)
@@ -22,17 +22,17 @@ RAN For Science gives job seekers and businesses a single place to connect. Visi
 - **Contact form** — a simple way for visitors to reach out, protected by the same spam defenses as every other form on the site
 - **Workshop attendance certificates** — after each free online workshop, the admin opens a short registration window (10 minutes by default) and shares the link in the Zoom chat; attendees fill a feedback form and instantly download a personalised PDF/PNG certificate, while staff review the responses, ratings, and statistics (and export them as CSV) from the dashboard
 - **Built-in spam and abuse protection** — every public form (jobs, quotes, contact) is shielded by multiple layers of automated defenses, so submissions stay genuine without adding friction for real visitors
-- **Secure admin access** — staff log in with optional two-factor authentication, repeated failed logins are automatically slowed down, and any admin can instantly sign out of all their active sessions if they suspect their account was compromised
+- **Secure admin access** — staff log in with email and password, repeated failed logins are automatically slowed down, and any admin can instantly sign out of all their active sessions if they suspect their account was compromised
 - **Full activity history** — every action an admin takes is recorded, so there's always a clear answer to "who did what, and when"
 - **Automatic error monitoring** — problems are detected and logged automatically, so issues can be found and fixed quickly rather than being reported by frustrated users
 - **Reliable file storage** — resumes and uploaded files are stored safely whether the site is running locally or live in production
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.2.9 (App Router) · React 19.2.4 · TypeScript 5.9.3
+- **Framework**: Next.js 16.4.0 (App Router) · React 19.2.4 · TypeScript 5.9.3
 - **Styling**: Tailwind CSS 4
 - **Database**: PostgreSQL via Prisma 7.8.0 (`@prisma/adapter-pg` driver adapter)
-- **Auth**: NextAuth.js (Auth.js) 5.0.0-beta.31, credentials + TOTP 2FA
+- **Auth**: NextAuth.js (Auth.js) 5.0.0-beta.32, credentials (a TOTP check exists server-side but there is no enrolment UI yet)
 - **i18n**: next-intl 4.13.1
 - **Animation**: framer-motion 12.42.2
 - **Validation**: Zod 4.4.3

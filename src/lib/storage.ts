@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import { readFile, unlink } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { fileTypeFromBuffer } from "file-type";
 import { logger } from "@/lib/logger";
 
@@ -130,16 +130,46 @@ export async function detectResumeContentType(buffer: Buffer): Promise<string | 
   return detected.mime;
 }
 
-export async function readResumeFile(key: string): Promise<Buffer> {
+/**
+ * `maxBytes` is checked against the Content-Length of the very GetObject
+ * response whose body is then read (not a separate HeadObject), so an
+ * oversized object is rejected before its body is pulled into memory and the
+ * bytes returned are exactly the object that was measured.
+ */
+export async function readResumeFile(key: string, maxBytes = Infinity): Promise<Buffer> {
   if (r2Configured) {
     const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const client = await getS3Client();
     const res = await client.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
+    if (res.ContentLength === undefined || res.ContentLength > maxBytes) {
+      throw new Error("resume object too large or of unknown size");
+    }
     const byteArray = await res.Body!.transformToByteArray();
     return Buffer.from(byteArray);
   }
 
   return readFile(path.join(LOCAL_STORAGE_DIR, key));
+}
+
+/**
+ * Writes already-validated bytes to a fresh server-generated key under
+ * `resumes/` — a key that was never presigned, so nobody holds a URL that can
+ * overwrite it after validation. The extension comes from the DETECTED mime,
+ * not anything client-supplied. Returns the key to store on the application.
+ */
+export async function storeValidatedResume(buffer: Buffer, detectedMime: string): Promise<string> {
+  const key = `resumes/${randomUUID()}${ALLOWED_RESUME_TYPES[detectedMime]}`;
+
+  if (r2Configured) {
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await getS3Client();
+    await client.send(new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, Body: buffer }));
+    return key;
+  }
+
+  await mkdir(path.join(LOCAL_STORAGE_DIR, "resumes"), { recursive: true });
+  await writeFile(path.join(LOCAL_STORAGE_DIR, key), buffer);
+  return key;
 }
 
 export async function deleteResumeFile(key: string): Promise<void> {
